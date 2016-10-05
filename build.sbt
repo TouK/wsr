@@ -13,6 +13,7 @@ val commonSettings =
     parallelExecution in Test := false
   )
 
+val akkaV             = "2.4.11"
 val scalaTestV        = "3.0.0"
 
 lazy val commons = project.in(file("commons"))
@@ -20,7 +21,6 @@ lazy val commons = project.in(file("commons"))
   .settings(
     name := "wsr-commons",
     libraryDependencies ++= {
-      val akkaV             = "2.4.10"
       val scalaLoggingV     = "3.4.0"
       val logbackV          = "1.1.7"
 
@@ -39,7 +39,12 @@ lazy val writer = project.in(file("writer"))
   .settings(
     name := "wsr-writer",
     assemblyJarName in assembly := "wsr-writer.jar",
-    libraryDependencies ++= { Seq.empty[ModuleID] }
+    libraryDependencies ++= {
+      Seq(
+        "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
+        "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
+      )
+    }
   )
   .dependsOn(commons)
 
@@ -48,7 +53,12 @@ lazy val reader = project.in(file("reader"))
   .settings(
     name := "wsr-reader",
     assemblyJarName in assembly := "wsr-reader.jar",
-    libraryDependencies ++= { Seq.empty[ModuleID] }
+    libraryDependencies ++= {
+      Seq(
+        "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
+        "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
+      )
+    }
   )
   .dependsOn(commons)
 
