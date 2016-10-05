@@ -1,6 +1,8 @@
 package pl.touk.wsr.transport.tcp
 
-import akka.actor.{Actor, ActorRef, Props, Stash, Status}
+import java.net.InetSocketAddress
+
+import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Stash, Status}
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
@@ -8,11 +10,22 @@ import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSende
 import pl.touk.wsr.transport.tcp.BindingActor._
 import pl.touk.wsr.transport.tcp.ConnectionActor._
 import pl.touk.wsr.transport.tcp.codec.{MessagesExtractor, ServerMessageCodec}
+import akka.pattern._
+import akka.util.Timeout
 
-class TcpWsrServerFactory extends WsrServerFactory{
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
-  override def bind(server: WsrServerSender => WsrServerHandler): Unit = {
+class TcpWsrServerFactory(actorRefFactory: ActorRefFactory,
+                          handler: WsrServerHandler,
+                          initialExtractor: MessagesExtractor[ClientMessage],
+                          localAddress: InetSocketAddress) extends WsrServerFactory{
 
+  override def bind(server: WsrServerSender => WsrServerHandler): Future[Unit] = {
+    val bindingActor = actorRefFactory.actorOf(Props(new BindingActor(handler, initialExtractor)))
+    implicit val bindTimeout = Timeout(35 seconds) // TODO: from configuration
+    (bindingActor ? DoBind(localAddress)).mapTo[Unit]
   }
 
 }
@@ -31,8 +44,8 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtracto
   import context.system
 
   def receive = {
-    case bind: Bind =>
-      IO(Tcp) ! bind
+    case DoBind(localAddress) =>
+      IO(Tcp) ! Bind(self, localAddress)
       context.become(waitingForBound(sender()))
   }
 
@@ -43,6 +56,7 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtracto
     case b: Bound =>
       unstashAll()
       context.become(bound)
+      originalSender ! Status.Success(())
     case other =>
       stash()
   }
@@ -90,6 +104,8 @@ class ConnectionActor(handler: WsrServerHandler,
 
 
 object BindingActor {
+
+  case class DoBind(localAddress: InetSocketAddress)
 
   class BindFailedException(msg: String) extends Exception(msg)
 
