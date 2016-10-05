@@ -43,13 +43,14 @@ class ConnectingActor(handler: WsrClientHandler,
   def receive = {
     case connect: Connect =>
       IO(Tcp) ! connect
-      context.become(waitingForConnection(sender()))
+      context.become(waitingForConnection)
+    case other =>
+      stash()
   }
 
-  def waitingForConnection(originalSender: ActorRef): Receive = {
+  val waitingForConnection: Receive = {
     case failed: CommandFailed =>
-      originalSender ! Status.Failure(new ConnectFailedException(failed.toString))
-      context stop self
+      throw new ConnectFailedException(failed.toString)
     case c: Connected =>
       val connection = sender()
       connection ! Register(self)

@@ -5,12 +5,14 @@ import java.util.UUID
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.srvrdr.NextNumberInSequence
+import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.sender.SequenceSender.{Next, RequestedData}
-import pl.touk.wsr.server.storage.{DataPack, DataPackId}
 import pl.touk.wsr.server.storage.StorageManager.{DataRequest, DeleteData}
+import pl.touk.wsr.server.storage.{DataPack, DataPackId}
 import pl.touk.wsr.transport.WsrServerSender
 
 class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorRef)
+                    (implicit metrics: ServerMetricsReporter)
   extends Actor with LazyLogging {
 
   import context._
@@ -45,6 +47,7 @@ class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorR
     unsentSequence.getOrElse(Nil).headOption match {
       case Some(numberToSend) =>
         serverSender.send(NextNumberInSequence(seqId, numberToSend))
+        metrics.reportNumberSent()
         unsentSequence = unsentSequence.map(seq => seq.tail)
       case None =>
         finishSending()
@@ -54,7 +57,8 @@ class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorR
 }
 
 object SequenceSender {
-  def prop(uuid: UUID, sender: WsrServerSender, storage: ActorRef): Props =
+  def prop(uuid: UUID, sender: WsrServerSender, storage: ActorRef)
+          (implicit metrics: ServerMetricsReporter): Props =
     Props(new SequenceSender(uuid, sender, storage))
 
   case object Next

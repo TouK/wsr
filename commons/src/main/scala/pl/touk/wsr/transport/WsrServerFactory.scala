@@ -2,11 +2,12 @@ package pl.touk.wsr.transport
 
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 trait WsrServerFactory {
 
-  def bind(server: WsrServerSender => WsrServerHandler): Future[Unit]
+  def bind(handler: WsrServerHandler)
+          (implicit ec: ExecutionContext): Future[WsrServerSender]
 
 }
 

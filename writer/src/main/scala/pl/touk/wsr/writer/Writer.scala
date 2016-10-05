@@ -63,6 +63,7 @@ class Writer(clientFactory: WsrClientFactory)
       metrics.reportRequestFinished()
     case ConnectionLost =>
       logger.error("Connection lost")
+      metrics.reportError()
       become(receiveDisconnected)
   }
 

@@ -6,6 +6,8 @@ trait WriterMetricsReporter {
 
   def reportRequestFinished(): Unit
 
+  def reportError(): Unit
+
 }
 
 class NoOpMetrics extends WriterMetricsReporter {
@@ -13,6 +15,8 @@ class NoOpMetrics extends WriterMetricsReporter {
   def reportRequestStarted(): Unit = {}
 
   def reportRequestFinished(): Unit = {}
+
+  def reportError(): Unit = {}
 
 }
 
@@ -22,6 +26,8 @@ trait WriterMetricsMBean {
 
   def getRequestsInProgressCount: Int
 
+  def getErrorsCount: Int
+
 }
 
 class WriterMetrics
@@ -30,6 +36,7 @@ class WriterMetrics
 
   private var completedRequestsCount = 0
   private var requestsInProgressCount = 0
+  @volatile private var errorsCount = 0
 
   def reportRequestStarted(): Unit = {
     synchronized {
@@ -44,6 +51,10 @@ class WriterMetrics
     }
   }
 
+  def reportError(): Unit = {
+    errorsCount += 1
+  }
+
   def getCompletedRequestsCount: Int = {
     synchronized {
       completedRequestsCount
@@ -54,6 +65,10 @@ class WriterMetrics
     synchronized {
       requestsInProgressCount
     }
+  }
+
+  def getErrorsCount: Int = {
+    errorsCount
   }
 
 }

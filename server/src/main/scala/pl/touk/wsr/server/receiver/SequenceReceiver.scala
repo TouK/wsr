@@ -4,11 +4,13 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers, WriterMessage}
+import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.receiver.SequenceReceiver.{Free, Full}
 import pl.touk.wsr.server.storage.StorageManager._
 import pl.touk.wsr.transport.{WsrServerHandler, WsrServerSender}
 
 class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
+                      (implicit metrics: ServerMetricsReporter)
   extends Actor with LazyLogging {
 
   import context._
@@ -41,6 +43,7 @@ class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
   private def waitingForNumbers: Receive = common orElse dataRequest orElse {
     case NextNumber(number) =>
       storage ! Store(number)
+      metrics.reportNumberReceived()
   }
 
   private def waitingForFreeDataSpace: Receive = common orElse dataRequest
@@ -48,7 +51,8 @@ class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
 }
 
 object SequenceReceiver {
-  def props(serverSender: WsrServerSender, storage: ActorRef): Props =
+  def props(serverSender: WsrServerSender, storage: ActorRef)
+           (implicit metrics: ServerMetricsReporter): Props =
     Props(new SequenceReceiver(serverSender, storage))
 
   case class Free(offset: Int, size: Int)

@@ -73,6 +73,7 @@ private class SequencesManager(numberOfSequences: Int,
           ref ! msg
         case None =>
           logger.error(s"Received value $number for unknown sequence $seqId")
+          metrics.reportError()
       }
     case msg@EndOfSequence(seqId) =>
       sequences.get(seqId) match {
@@ -80,10 +81,13 @@ private class SequencesManager(numberOfSequences: Int,
           ref ! msg
         case None =>
           logger.error(s"Received end of unknown sequence $seqId")
+          metrics.reportError()
       }
     case ConnectionLost =>
       logger.error("Connection lost")
+      metrics.reportError()
       sequences.values.foreach(stop)
+      become(receiveDisconnected)
     case Terminated(ref) =>
       val seqId = UUID.fromString(ref.path.name)
       sequences -= seqId
