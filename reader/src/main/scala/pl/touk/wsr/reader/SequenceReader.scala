@@ -10,7 +10,8 @@ import pl.touk.wsr.transport.WsrClientSender
 object SequenceReader {
 
   def props(seqId: UUID,
-            client: WsrClientSender): Props = {
+            client: WsrClientSender)
+           (implicit metrics: ReaderMetricsReporter): Props = {
     Props(new SequenceReader(
       seqId,
       client))
@@ -20,12 +21,15 @@ object SequenceReader {
 
 private class SequenceReader(seqId: UUID,
                              client: WsrClientSender)
+                            (implicit metrics: ReaderMetricsReporter)
   extends Actor
     with StrictLogging {
 
   import context._
 
   logger.debug(s"Sequence $seqId: start")
+
+  metrics.reportSequenceStarted()
 
   client.send(RequestForSequence(seqId))
 
@@ -50,6 +54,7 @@ private class SequenceReader(seqId: UUID,
     case EndOfSequence(_) =>
       logger.debug(s"Sequence $seqId: received end of sequence")
       client.send(Ack(seqId))
+      metrics.reportSequenceFinished()
       stop(self)
   }
 
