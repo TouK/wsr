@@ -2,27 +2,19 @@ package pl.touk.wsr.transport
 import akka.actor.ActorRef
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 object simple {
 
   class SimpleWsrClientFactory(targetActor: ActorRef) extends WsrClientFactory {
-
-    def awaitConnect(handler: WsrClientHandler): SimpleWsrClientSender =
-      Await.result(connect(handler), 1 second)
-
-    override def connect(clientHandler: WsrClientHandler): Future[SimpleWsrClientSender] = {
+    override def connect(clientHandler: WsrClientHandler): SimpleWsrClientSender = {
+      clientHandler.onConnectionEstablished() // TODO: resolve cyclic dependency
       val serverSender = new SimpleWsrServerSender(clientHandler)
       val serverHandler = new ActorForwardingWsrServerHandler(targetActor)
-      val clientSender = new SimpleWsrClientSender(serverSender, serverHandler)
-      Future.successful(clientSender)
+      new SimpleWsrClientSender(serverSender, serverHandler)
     }
   }
 
   class SimpleWsrClientSender(val serverSender: SimpleWsrServerSender,
-                              val serverHandler: ActorForwardingWsrServerHandler) extends WsrClientSender {
+                              serverHandler: WsrServerHandler) extends WsrClientSender {
 
     override def send(message: ClientMessage): Unit = {
       serverHandler.onMessage(message)
@@ -38,6 +30,7 @@ object simple {
 
     def connectionLost(): Unit = {
       handler.onConnectionLost()
+      handler.onConnectionEstablished()
     }
 
   }

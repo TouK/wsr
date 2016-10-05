@@ -2,9 +2,11 @@ package pl.touk.wsr.transport
 
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 
+import scala.concurrent.Future
+
 trait WsrServerFactory {
 
-  def bind(server: WsrServerSender => WsrServerHandler): Unit
+  def bind(server: WsrServerSender => WsrServerHandler): Future[Unit]
 
 }
 
@@ -16,6 +18,6 @@ trait WsrServerSender {
 
 trait WsrServerHandler {
 
-  protected def onMessage(message: ClientMessage): Unit
+  def onMessage(message: ClientMessage): Unit
 
 }

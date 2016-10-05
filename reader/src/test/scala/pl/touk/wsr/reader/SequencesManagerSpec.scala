@@ -10,7 +10,7 @@ import pl.touk.wsr.protocol.srvrdr.{Ack, EndOfSequence, NextNumberInSequence, Re
 import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, Promise}
 
 class SequencesManagerSpec
   extends TestKit(ActorSystem("SequencesManagerSpec"))
@@ -49,13 +49,12 @@ class SequencesManagerSpec
       SequencesManager.props(
         numberOfSequences,
         new WsrClientFactory {
-          def connect(handler: WsrClientHandler): Future[WsrClientSender] = {
+          def connect(handler: WsrClientHandler): WsrClientSender = {
+            handler.onConnectionEstablished()
             promise.success(handler)
-            Future.successful {
-              new WsrClientSender {
-                def send(message: ClientMessage): Unit = {
-                  testActor ! message
-                }
+            new WsrClientSender {
+              def send(message: ClientMessage): Unit = {
+                testActor ! message
               }
             }
           }

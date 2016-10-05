@@ -19,6 +19,7 @@ class SequenceReaderSpec
   it should "send request for sequence" in {
     prepareSequenceReader()
     expectMsgType[RequestForSequence]
+    expectNoMsg()
   }
 
   it should "process first number" in {

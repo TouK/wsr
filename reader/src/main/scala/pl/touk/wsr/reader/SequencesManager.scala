@@ -2,8 +2,7 @@ package pl.touk.wsr.reader
 
 import java.util.UUID
 
-import akka.actor.{Actor, ActorRef, Props, Stash, Status, Terminated}
-import akka.pattern.pipe
+import akka.actor.{Actor, ActorRef, Props, Terminated}
 import com.typesafe.scalalogging.StrictLogging
 import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.srvrdr.{EndOfSequence, NextNumberInSequence}
@@ -19,6 +18,8 @@ object SequencesManager {
       clientFactory))
   }
 
+  case object ConnectionEstablished
+
   case object ConnectionLost
 
 }
@@ -27,7 +28,6 @@ private class SequencesManager(numberOfSequences: Int,
                                clientFactory: WsrClientFactory)
                               (implicit metrics: ReaderMetricsReporter)
   extends Actor
-    with Stash
     with StrictLogging {
 
   import SequencesManager._
@@ -37,33 +37,36 @@ private class SequencesManager(numberOfSequences: Int,
 
   var sequences: Map[UUID, ActorRef] = Map.empty
 
-  clientFactory.connect(new WsrClientHandler {
+  val client = clientFactory.connect(new WsrClientHandler {
     def onMessage(message: ServerMessage): Unit = {
       self ! message
+    }
+
+    override def onConnectionEstablished(): Unit = {
+      self ! ConnectionEstablished
     }
 
     def onConnectionLost(): Unit = {
       self ! ConnectionLost
     }
-  }) pipeTo self
+  })
 
-  def receive = {
-    case client: WsrClientSender =>
-      logger.debug("Connected")
-      1 to numberOfSequences foreach {
+  def receive = receiveDisconnected
+
+  def receiveDisconnected: Receive = {
+    case ConnectionEstablished =>
+      logger.info("Connection established")
+      sequences.size until numberOfSequences foreach {
         _ =>
           createSequenceReader(client)
       }
-      unstashAll()
-      become(receiveConnected(client))
-    case Status.Failure(cause) =>
-      logger.error("Exception while connecting", cause)
-      system.terminate()
-    case _ =>
-      stash()
+      become(receiveConnected)
+    case Terminated(ref) =>
+      val seqId = UUID.fromString(ref.path.name)
+      sequences -= seqId
   }
 
-  def receiveConnected(client: WsrClientSender): Receive = {
+  def receiveConnected: Receive = {
     case msg@NextNumberInSequence(seqId, number) =>
       sequences.get(seqId) match {
         case Some(ref) =>
