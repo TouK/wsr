@@ -1,13 +1,10 @@
 package pl.touk.wsr.writer
 
-import akka.actor.{Actor, Props, Stash, Status}
-import akka.pattern.pipe
+import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers}
-import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
-
-import scala.concurrent.Future
+import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler}
 
 object Writer {
 
@@ -16,6 +13,8 @@ object Writer {
     Props(new Writer(clientFactory))
   }
 
+  case object ConnectionEstablished
+
   case object ConnectionLost
 
 }
@@ -23,7 +22,6 @@ object Writer {
 class Writer(clientFactory: WsrClientFactory)
             (implicit metrics: WriterMetricsReporter)
   extends Actor
-    with Stash
     with LazyLogging {
 
   import Writer._
@@ -31,32 +29,30 @@ class Writer(clientFactory: WsrClientFactory)
 
   logger.debug("Start")
 
-  Future.successful(clientFactory.connect(new WsrClientHandler { // FIXME
+  val client = clientFactory.connect(new WsrClientHandler {
     def onMessage(message: ServerMessage): Unit = {
       self ! message
     }
 
-    override def onConnectionEstablished(): Unit = ??? // FIXME
+    override def onConnectionEstablished(): Unit = {
+      self ! ConnectionEstablished
+    }
 
     def onConnectionLost(): Unit = {
       self ! ConnectionLost
     }
-  })) pipeTo self
+  })
 
-  def receive = {
-    case client: WsrClientSender =>
-      logger.debug("Connected")
+  def receive = receiveDisconnected
+
+  def receiveDisconnected: Receive = {
+    case ConnectionEstablished =>
+      logger.info("Connection established")
       client.send(Greeting)
-      unstashAll()
-      become(receiveConnected(client))
-    case Status.Failure(cause) =>
-      logger.error("Exception while connecting", cause)
-      system.terminate()
-    case _ =>
-      stash()
+      become(receiveConnected)
   }
 
-  def receiveConnected(client: WsrClientSender): Receive = {
+  def receiveConnected: Receive = {
     case RequestForNumbers(start, count) =>
       logger.debug(s"Received request for $count numbers starting from $start")
       metrics.reportRequestStarted()
@@ -67,6 +63,7 @@ class Writer(clientFactory: WsrClientFactory)
       metrics.reportRequestFinished()
     case ConnectionLost =>
       logger.error("Connection lost")
+      become(receiveDisconnected)
   }
 
 }
