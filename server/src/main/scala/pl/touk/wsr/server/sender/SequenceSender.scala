@@ -25,7 +25,7 @@ class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorR
 
   override def receive: Receive = {
     case RequestedData(data) =>
-      unsentSequence = Some(data.sequence.reverse)
+      unsentSequence = Some(data.sequence.toList)
       sequencePackId = Some(data.id)
       become(dataAvailable)
       sendNextNumberFromSequence()

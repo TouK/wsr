@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.server.receiver.{SequenceReceiver, SupplyingSequenceReceiver}
 import pl.touk.wsr.server.sender.{SequenceSenderCoordinator, SupplyingWsrServerHandler}
-import pl.touk.wsr.server.storage.{HsqlDbStorage, StorageManager}
+import pl.touk.wsr.server.storage.{InMemoryStorage, StorageManager}
 import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 
 import scala.concurrent.Future
@@ -22,7 +22,7 @@ object ServerBoot extends App with LazyLogging {
     override def bind(server: (WsrServerSender) => WsrServerHandler): Future[Unit] = Future.successful(Unit)
   }
 
-  val storageManager = system.actorOf(StorageManager.props(new HsqlDbStorage), "storage-manager")
+  val storageManager = system.actorOf(StorageManager.props(new InMemoryStorage), "storage-manager")
   writerSideFactory.bind { sender: WsrServerSender =>
     val sequenceReceiver = system.actorOf(SequenceReceiver.props(sender, storageManager), "sequence-receiver")
     new SupplyingSequenceReceiver(sequenceReceiver)
