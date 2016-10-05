@@ -8,30 +8,30 @@ import scala.language.postfixOps
 
 object simple {
 
-  class SimpleWsrClientFactory(server: WsrHandler => SimpleWsrServer) extends WsrClientFactory {
+  class SimpleWsrClientFactory(server: WsrClientHandler => SimpleWsrServerHandler) extends WsrClientFactory {
 
-    def awaitConnect(handler: WsrHandler): SimpleWsrClient =
+    def awaitConnect(handler: WsrClientHandler): SimpleWsrClientSender =
       Await.result(connect(handler), 1 second)
 
-    override def connect(handler: WsrHandler): Future[SimpleWsrClient] = {
-      val client = new SimpleWsrClient(server(handler))
+    override def connect(handler: WsrClientHandler): Future[SimpleWsrClientSender] = {
+      val client = new SimpleWsrClientSender(server(handler))
       Future.successful(client)
     }
   }
 
-  class SimpleWsrClient(val server: SimpleWsrServer) extends WsrClient {
+  class SimpleWsrClientSender(val server: SimpleWsrServerHandler) extends WsrClientSender {
 
     override def send(message: ClientMessage): Unit = {
-      server.receiveClientMessage(message)
+      server.onMessage(message)
     }
 
   }
 
-  trait SimpleWsrServer extends WsrServer {
+  trait SimpleWsrServerHandler extends WsrServerHandler {
 
-    protected def handler: WsrHandler
+    protected def handler: WsrClientHandler
 
-    override def receiveClientMessage(message: ClientMessage): Unit
+    override def onMessage(message: ClientMessage): Unit
 
     override def send(message: ServerMessage): Unit = {
       handler.onMessage(message)
@@ -43,8 +43,8 @@ object simple {
 
   }
 
-  class ActorForwardingWsrServer(override protected val handler: WsrHandler, targetActor: ActorRef) extends SimpleWsrServer {
-    override def receiveClientMessage(message: ClientMessage): Unit = {
+  class ActorForwardingWsrServerHandler(override protected val handler: WsrClientHandler, targetActor: ActorRef) extends SimpleWsrServerHandler {
+    override def onMessage(message: ClientMessage): Unit = {
       targetActor ! message
     }
   }

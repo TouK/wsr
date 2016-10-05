@@ -5,12 +5,12 @@ import java.util.UUID
 import akka.actor.{Actor, Props}
 import com.typesafe.scalalogging.StrictLogging
 import pl.touk.wsr.protocol.srvrdr.{Ack, EndOfSequence, NextNumberInSequence, RequestForSequence}
-import pl.touk.wsr.transport.WsrClient
+import pl.touk.wsr.transport.WsrClientSender
 
 object SequenceReader {
 
   def props(seqId: UUID,
-            client: WsrClient): Props = {
+            client: WsrClientSender): Props = {
     Props(new SequenceReader(
       seqId,
       client))
@@ -19,7 +19,7 @@ object SequenceReader {
 }
 
 private class SequenceReader(seqId: UUID,
-                             client: WsrClient)
+                             client: WsrClientSender)
   extends Actor
     with StrictLogging {
 

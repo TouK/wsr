@@ -7,7 +7,7 @@ import akka.testkit.TestKit
 import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, EndOfSequence, NextNumberInSequence, RequestForSequence}
-import pl.touk.wsr.transport.WsrClient
+import pl.touk.wsr.transport.WsrClientSender
 
 class SequenceReaderSpec
   extends TestKit(ActorSystem("SequenceReaderSpec"))
@@ -69,7 +69,7 @@ class SequenceReaderSpec
     system.actorOf(
       SequenceReader.props(
         seqId,
-        new WsrClient {
+        new WsrClientSender {
           def send(message: ClientMessage): Unit = {
             testActor ! message
           }

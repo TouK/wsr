@@ -7,7 +7,7 @@ import akka.pattern.pipe
 import com.typesafe.scalalogging.StrictLogging
 import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.srvrdr.{EndOfSequence, NextNumberInSequence}
-import pl.touk.wsr.transport.{WsrClient, WsrClientFactory, WsrHandler}
+import pl.touk.wsr.transport.{WsrClientSender, WsrClientFactory, WsrClientHandler}
 
 object SequencesManager {
 
@@ -35,7 +35,7 @@ private class SequencesManager(numberOfSequences: Int,
 
   var sequences: Map[UUID, ActorRef] = Map.empty
 
-  clientFactory.connect(new WsrHandler {
+  clientFactory.connect(new WsrClientHandler {
     def onMessage(message: ServerMessage): Unit = {
       self ! message
     }
@@ -46,7 +46,7 @@ private class SequencesManager(numberOfSequences: Int,
   }) pipeTo self
 
   def receive = {
-    case client: WsrClient =>
+    case client: WsrClientSender =>
       1 to numberOfSequences foreach {
         _ =>
           createSequenceReader(client)
@@ -57,7 +57,7 @@ private class SequencesManager(numberOfSequences: Int,
       stash()
   }
 
-  def receiveConnected(client: WsrClient): Receive = {
+  def receiveConnected(client: WsrClientSender): Receive = {
     case msg@NextNumberInSequence(seqId, number) =>
       sequences.get(seqId) match {
         case Some(ref) =>
@@ -80,7 +80,7 @@ private class SequencesManager(numberOfSequences: Int,
       createSequenceReader(client)
   }
 
-  def createSequenceReader(client: WsrClient) = {
+  def createSequenceReader(client: WsrClientSender) = {
     val seqId = UUID.randomUUID()
     val actor = actorOf(
       SequenceReader.props(
