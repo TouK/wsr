@@ -6,7 +6,8 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.srvrdr.NextNumberInSequence
 import pl.touk.wsr.server.sender.SequenceSender.{Next, RequestedData}
-import pl.touk.wsr.server.storage.StorageManager.{DataPack, DataPackId, DeleteData, DataRequest}
+import pl.touk.wsr.server.storage.{DataPack, DataPackId}
+import pl.touk.wsr.server.storage.StorageManager.{DataRequest, DeleteData}
 import pl.touk.wsr.transport.WsrServerSender
 
 class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorRef)
@@ -57,7 +58,6 @@ object SequenceSender {
     Props(new SequenceSender(uuid, sender, storage))
 
   case object Next
-
   case class RequestedData(data: DataPack)
 
 }
