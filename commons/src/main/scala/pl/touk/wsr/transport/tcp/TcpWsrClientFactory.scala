@@ -10,7 +10,6 @@ import pl.touk.wsr.transport._
 import pl.touk.wsr.transport.tcp.ConnectingActor._
 import pl.touk.wsr.transport.tcp.codec.{ClientMessageCodec, MessagesExtractor}
 
-import scala.concurrent.Future
 import scala.language.postfixOps
 
 class TcpWsrClientFactory(actorRefFactory: ActorRefFactory,

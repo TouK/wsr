@@ -7,6 +7,8 @@ import pl.touk.wsr.server.sender.{SequenceSenderCoordinator, SupplyingWsrServerH
 import pl.touk.wsr.server.storage.StorageManager
 import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 
+import scala.concurrent.Future
+
 object ServerBoot extends App with LazyLogging {
   logger.info("SERVER is starting ....")
 
@@ -14,10 +16,10 @@ object ServerBoot extends App with LazyLogging {
   implicit val ex = system.dispatcher
 
   val writerSideFactory = new WsrServerFactory {
-    override def bind(server: (WsrServerSender) => WsrServerHandler): Unit = {}
+    override def bind(server: (WsrServerSender) => WsrServerHandler): Future[Unit] = Future.successful(Unit)
   }
   val readerSideFactory = new WsrServerFactory {
-    override def bind(server: (WsrServerSender) => WsrServerHandler): Unit = {}
+    override def bind(server: (WsrServerSender) => WsrServerHandler): Future[Unit] = Future.successful(Unit)
   }
 
   val storage = system.actorOf(StorageManager.props(), "storage")
