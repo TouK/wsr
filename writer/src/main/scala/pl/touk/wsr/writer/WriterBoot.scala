@@ -15,11 +15,9 @@ object WriterBoot extends App with LazyLogging {
 
   // TODO replace by real implementation
   val clientFactory: WsrClientFactory = new WsrClientFactory {
-    def connect(handler: WsrClientHandler): Future[WsrClientSender] = {
-      Future.successful {
-        new WsrClientSender {
-          def send(message: ClientMessage): Unit = {}
-        }
+    def connect(handler: WsrClientHandler): WsrClientSender = {
+      new WsrClientSender {
+        def send(message: ClientMessage): Unit = {}
       }
     }
   }

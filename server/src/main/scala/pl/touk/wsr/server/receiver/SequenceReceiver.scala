@@ -54,7 +54,7 @@ object SequenceReceiver {
 class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
   extends WsrServerHandler with LazyLogging {
 
-  override protected def onMessage(message: ClientMessage): Unit = message match {
+  override def onMessage(message: ClientMessage): Unit = message match {
     case msg: WriterMessage => handleReaderMessage(msg)
     case _ => logger.error("Unknown client message type")
   }
