@@ -1,15 +1,57 @@
 package pl.touk.wsr.server.receiver
 
+import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ClientMessage
-import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, WriterMessage}
-import pl.touk.wsr.server.storage.{FreeDataSpace, Full, StorageManager}
-import pl.touk.wsr.transport.WsrServerHandler
+import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers, WriterMessage}
+import pl.touk.wsr.server.storage.StorageManager._
+import pl.touk.wsr.transport.{WsrServerHandler, WsrServerSender}
 
-import scala.concurrent.ExecutionContext
+class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
+  extends Actor with LazyLogging {
 
-class SequenceReceiver(requester: SequenceRequester, storage: StorageManager)
-                      (implicit executionContext: ExecutionContext)
+  import context._
+
+  override def preStart(): Unit = {
+    storage ! RegisterFreeDataSpaceListener
+    super.preStart()
+  }
+
+  override def receive: Receive = common
+
+  private def common: Receive = {
+    case Greeting =>
+      storage ! IsFreeDataSpace
+      become(waitingForDataSpaceInfo)
+  }
+
+  private def dataRequest: Receive = {
+    case Free(offset, size) =>
+      serverSender.send(RequestForNumbers(offset, size))
+      become(waitingForNumbers)
+  }
+
+  private def waitingForDataSpaceInfo: Receive = common orElse dataRequest orElse {
+    case Full =>
+      logger.info("Waiting for free space in storage")
+      become(waitingForFreeDataSpace)
+  }
+
+  private def waitingForNumbers: Receive = common orElse dataRequest orElse {
+    case NextNumber(number) =>
+      storage ! Store(number)
+  }
+
+  private def waitingForFreeDataSpace: Receive = common orElse dataRequest
+
+}
+
+object SequenceReceiver {
+  def props(serverSender: WsrServerSender, storage: ActorRef): Props =
+    Props(new SequenceReceiver(serverSender, storage))
+}
+
+class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
   extends WsrServerHandler with LazyLogging {
 
   override protected def onMessage(message: ClientMessage): Unit = message match {
@@ -17,21 +59,5 @@ class SequenceReceiver(requester: SequenceRequester, storage: StorageManager)
     case _ => logger.error("Unknown client message type")
   }
 
-  private def handleReaderMessage(msg: WriterMessage): Unit = msg match {
-    case Greeting => handleGreeting()
-    case NextNumber(number) => handleNextNumber(number)
-  }
-
-  private def handleGreeting(): Unit = {
-    logger.info("Server handle Greeting message from Writer")
-    storage.isFreeDataSpace.map {
-      case FreeDataSpace(offset, size) => requester.request(size, offset)
-      case Full => logger.info("Waiting for free space in storage")
-    }
-  }
-
-  private def handleNextNumber(number: Int): Unit = {
-    storage.storeData(number)
-  }
-
+  private def handleReaderMessage(msg: WriterMessage): Unit = sequenceReceiver ! msg
 }

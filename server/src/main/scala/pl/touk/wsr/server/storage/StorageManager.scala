@@ -1,17 +1,30 @@
 package pl.touk.wsr.server.storage
 
-import pl.touk.wsr.server.receiver.SequenceRequester
+import akka.actor.{Actor, Props, Terminated}
+import pl.touk.wsr.server.storage.StorageManager.{DeleteData, DataRequest}
 
-import scala.concurrent.Future
-
-trait StorageManager {
-  def isFreeDataSpace: Future[DataSpace]
-  def storeData(number: Int): Future[Unit]
+class StorageManager extends Actor {
+  override def receive: Receive = {
+    case DataRequest =>
+    case DeleteData(id) =>
+    case Terminated(dataRequestor) =>
+  }
 }
 
-sealed trait DataSpace
-case class FreeDataSpace(offset: Int, sizE: Int) extends DataSpace
-case object Full extends DataSpace
+object StorageManager  {
+  def props(): Props = Props(new StorageManager)
 
-class HsqlDbStorageManager(dataRequester: SequenceRequester) {
+  // receive
+  case object RegisterFreeDataSpaceListener
+  case object DataRequest
+  case object IsFreeDataSpace
+  case class Store(number: Int)
+  case class DeleteData(id: DataPackId)
+
+  // send
+  case class Free(offset: Int, size: Int)
+  case object Full
+
+  trait DataPackId
+  case class DataPack(id: DataPackId, sequence: List[Int])
 }
