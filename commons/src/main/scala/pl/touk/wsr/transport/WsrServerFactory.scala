@@ -16,6 +16,6 @@ trait WsrServerSender {
 
 trait WsrServerHandler {
 
-  protected def onMessage(message: ClientMessage): Unit
+  def onMessage(message: ClientMessage): Unit
 
 }

@@ -8,8 +8,8 @@ object wrtsrv {
 
   case object Greeting extends WriterMessage
 
-  case class RequestForNumbers(start: Int, count: Int) extends WServerMessage
-
   case class NextNumber(number: Int) extends WriterMessage
+
+  case class RequestForNumbers(start: Int, count: Int) extends WServerMessage
 
 }

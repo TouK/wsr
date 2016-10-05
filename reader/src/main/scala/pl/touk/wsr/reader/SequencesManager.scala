@@ -9,6 +9,8 @@ import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.srvrdr.{EndOfSequence, NextNumberInSequence}
 import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
 
+import scala.concurrent.Future
+
 object SequencesManager {
 
   def props(numberOfSequences: Int,
@@ -37,15 +39,17 @@ private class SequencesManager(numberOfSequences: Int,
 
   var sequences: Map[UUID, ActorRef] = Map.empty
 
-  clientFactory.connect(new WsrClientHandler {
+  Future.successful(clientFactory.connect(new WsrClientHandler {// FIXME
     def onMessage(message: ServerMessage): Unit = {
       self ! message
     }
 
+    override def onConnectionEstablished(): Unit = ??? // FIXME
+
     def onConnectionLost(): Unit = {
       self ! ConnectionLost
     }
-  }) pipeTo self
+  })) pipeTo self
 
   def receive = {
     case client: WsrClientSender =>

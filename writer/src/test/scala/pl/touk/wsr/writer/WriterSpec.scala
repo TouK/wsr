@@ -52,13 +52,11 @@ class WriterSpec
     system.actorOf(
       Writer.props(
         new WsrClientFactory {
-          def connect(handler: WsrClientHandler): Future[WsrClientSender] = {
+          def connect(handler: WsrClientHandler): WsrClientSender = {
             promise.success(handler)
-            Future.successful {
-              new WsrClientSender {
-                def send(message: ClientMessage): Unit = {
-                  testActor ! message
-                }
+            new WsrClientSender {
+              def send(message: ClientMessage): Unit = {
+                testActor ! message
               }
             }
           }

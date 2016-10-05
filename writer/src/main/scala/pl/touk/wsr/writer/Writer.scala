@@ -7,6 +7,8 @@ import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers}
 import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
 
+import scala.concurrent.Future
+
 object Writer {
 
   def props(clientFactory: WsrClientFactory)
@@ -29,15 +31,17 @@ class Writer(clientFactory: WsrClientFactory)
 
   logger.debug("Start")
 
-  clientFactory.connect(new WsrClientHandler {
+  Future.successful(clientFactory.connect(new WsrClientHandler { // FIXME
     def onMessage(message: ServerMessage): Unit = {
       self ! message
     }
 
+    override def onConnectionEstablished(): Unit = ??? // FIXME
+
     def onConnectionLost(): Unit = {
       self ! ConnectionLost
     }
-  }) pipeTo self
+  })) pipeTo self
 
   def receive = {
     case client: WsrClientSender =>

@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.srvrdr.NextNumberInSequence
 import pl.touk.wsr.protocol.wrtsrv.Greeting
-import pl.touk.wsr.transport.simple.{ActorForwardingWsrServerHandler, SimpleWsrClientSender, SimpleWsrClientFactory}
+import pl.touk.wsr.transport.simple.{SimpleWsrClientFactory, SimpleWsrClientSender}
 
 class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) with FlatSpecLike with Matchers {
 
@@ -40,7 +40,7 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
   }
 
   def prepareClient(handler: WsrClientHandler): SimpleWsrClientSender = {
-    new SimpleWsrClientFactory(testActor).awaitConnect(handler)
+    new SimpleWsrClientFactory(testActor).connect(handler)
   }
 
 }
@@ -48,10 +48,18 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
 class MockWsrClientHandler extends WsrClientHandler {
   @volatile var serverMessages = IndexedSeq.empty[ServerMessage]
 
+  @volatile var connectionEstabilished: Boolean = false
+
   @volatile var connectionLost: Boolean = false
 
   override def onMessage(message: ServerMessage): Unit =
     serverMessages :+= message
+
+
+  override def onConnectionEstablished(): Unit =
+    connectionEstabilished = true
+
   override def onConnectionLost(): Unit =
     connectionLost = true
+
 }

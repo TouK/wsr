@@ -6,7 +6,7 @@ import scala.concurrent.Future
 
 trait WsrClientFactory {
 
-  def connect(handler: WsrClientHandler): Future[WsrClientSender]
+  def connect(handler: WsrClientHandler): WsrClientSender
 
 }
 
@@ -19,6 +19,8 @@ trait WsrClientSender {
 trait WsrClientHandler {
 
   def onMessage(message: ServerMessage): Unit
+
+  def onConnectionEstablished(): Unit
 
   def onConnectionLost(): Unit
 
