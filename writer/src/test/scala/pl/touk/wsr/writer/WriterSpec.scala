@@ -10,7 +10,7 @@ import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers}
 import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
 
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future, Promise}
+import scala.concurrent.{Await, Promise}
 
 class WriterSpec
   extends TestKit(ActorSystem("WriterSpec"))
@@ -53,6 +53,7 @@ class WriterSpec
       Writer.props(
         new WsrClientFactory {
           def connect(handler: WsrClientHandler): WsrClientSender = {
+            handler.onConnectionEstablished()
             promise.success(handler)
             new WsrClientSender {
               def send(message: ClientMessage): Unit = {
