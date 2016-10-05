@@ -8,7 +8,7 @@ val commonSettings =
     organization := "pl.touk.wsr",
     javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
     scalacOptions := Seq(
-      "-target:jvm-1.7", "-unchecked", "-deprecation", "-encoding", "utf8", "-Xcheckinit", "-Xfatal-warnings", "-feature"
+      "-target:jvm-1.8", "-unchecked", "-deprecation", "-encoding", "utf8", "-Xcheckinit", "-Xfatal-warnings", "-feature"
     ),
     parallelExecution in Test := false
   )
@@ -22,10 +22,12 @@ lazy val commons = project.in(file("commons"))
     libraryDependencies ++= {
       val akkaV             = "2.4.10"
       val scalaLoggingV     = "3.4.0"
+      val logbackV          = "1.1.7"
 
       Seq(
         "com.typesafe.akka"                   %% "akka-actor"                   % akkaV,
         "com.typesafe.scala-logging"          %% "scala-logging"                % scalaLoggingV,
+        "ch.qos.logback"                       % "logback-classic"              % logbackV,
         "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
@@ -36,25 +38,25 @@ lazy val writer = project.in(file("writer"))
   .settings(commonSettings)
   .settings(
     name := "wsr-writer",
+    assemblyJarName in assembly := "wsr-writer.jar",
     libraryDependencies ++= { Seq.empty[ModuleID] }
   )
   .dependsOn(commons)
-  .enablePlugins(SbtNativePackager, JavaServerAppPackaging)
 
 lazy val reader = project.in(file("reader"))
   .settings(commonSettings)
   .settings(
     name := "wsr-reader",
+    assemblyJarName in assembly := "wsr-reader.jar",
     libraryDependencies ++= { Seq.empty[ModuleID] }
   )
   .dependsOn(commons)
-  .enablePlugins(SbtNativePackager, JavaServerAppPackaging)
 
 lazy val server = project.in(file("server"))
   .settings(commonSettings)
   .settings(
     name := "wsr-sever",
+    assemblyJarName in assembly := "wsr-sever.jar",
     libraryDependencies ++= { Seq.empty[ModuleID] }
   )
   .dependsOn(commons)
-  .enablePlugins(SbtNativePackager, JavaServerAppPackaging)
