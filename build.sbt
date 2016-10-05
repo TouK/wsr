@@ -13,6 +13,8 @@ val commonSettings =
     parallelExecution in Test := false
   )
 
+val scalaTestV        = "3.0.0"
+
 lazy val commons = project.in(file("commons"))
   .settings(commonSettings)
   .settings(
@@ -23,7 +25,8 @@ lazy val commons = project.in(file("commons"))
 
       Seq(
         "com.typesafe.akka"                   %% "akka-actor"                   % akkaV,
-        "com.typesafe.scala-logging"          %% "scala-logging"                % scalaLoggingV
+        "com.typesafe.scala-logging"          %% "scala-logging"                % scalaLoggingV,
+        "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
     }
   )
