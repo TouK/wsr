@@ -33,7 +33,7 @@ object ServerBoot extends App with LazyLogging {
   val mBeanName = new ObjectName("pl.touk.wsr.server:name=Server")
   mbs.registerMBean(metrics, mBeanName)
 
-  val storageManager = system.actorOf(StorageManager.props(new InMemoryStorage), "storage-manager")
+  val storageManager = system.actorOf(StorageManager.props(new InMemoryStorage(10, 2000)), "storage-manager")
   writerSideFactory.bind {
     val sequenceReceiver = system.actorOf(SequenceReceiver.props(null, storageManager), "sequence-receiver")
     new SupplyingSequenceReceiver(sequenceReceiver)

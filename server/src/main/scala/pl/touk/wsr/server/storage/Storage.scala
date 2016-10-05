@@ -4,13 +4,15 @@ import java.util.UUID
 
 import scala.concurrent.Future
 
-// data state: unreserved, reserved
 trait Storage {
 
   // todo: what about canceling reservation?
   def addData(number: Int): Future[Unit]
+
   def deleteData(id: DataPackId): Future[Unit]
+
   def getUnreservedDataPack: Future[Option[DataPack]]
+
   def hasFreeDataSpace: Future[DataSpace]
 }
 
@@ -21,12 +23,12 @@ sealed trait DataSpace
 case object NoFreeDataSpace extends DataSpace
 case class FreeDataSpace(size: Int, offset: Int) extends DataSpace
 
-class InMemoryStorage extends Storage {
-
-  private val dataPackSize = 10
+class InMemoryStorage(dataPackSize: Int, maxPacksDataSize: Int) extends Storage {
 
   private case class UUIDDataPackId(uuid: UUID) extends DataPackId
+
   private case class DataPackWithReservation(dataPack: DataPack, reserved: Boolean)
+
   private object DataPackWithReservation {
     def apply(data: DataPack): DataPackWithReservation = DataPackWithReservation(data, reserved = false)
   }
@@ -36,7 +38,7 @@ class InMemoryStorage extends Storage {
 
   override def addData(number: Int): Future[Unit] = Future.successful {
     val newUnpackedData = unpackedData :+ number
-    if(newUnpackedData.length == dataPackSize) {
+    if (newUnpackedData.length == dataPackSize) {
       val dataPackId = UUIDDataPackId(UUID.randomUUID())
       val dataPack = DataPackWithReservation(DataPack(dataPackId, newUnpackedData))
       dataPacks = dataPacks :+ dataPack
@@ -54,5 +56,11 @@ class InMemoryStorage extends Storage {
     dataPacks.find(!_.reserved).map(_.dataPack)
   }
 
-  override def hasFreeDataSpace: Future[DataSpace] = ???
+  override def hasFreeDataSpace: Future[DataSpace] = Future.successful {
+    if (maxPacksDataSize <= dataPacks.length) NoFreeDataSpace
+    else FreeDataSpace(
+      (maxPacksDataSize - dataPacks.length) * dataPackSize,
+      if(unpackedData.nonEmpty) unpackedData.last else dataPacks.last.dataPack.sequence.last
+    )
+  }
 }
