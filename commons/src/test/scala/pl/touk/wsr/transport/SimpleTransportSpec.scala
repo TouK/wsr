@@ -24,7 +24,7 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
     val handler = new MockWsrClientHandler
     val client = prepareClient(handler)
 
-    client.server.connectionLost()
+    client.serverSender.connectionLost()
 
     handler.connectionLost shouldBe true
   }
@@ -34,15 +34,13 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
     val client = prepareClient(handler)
 
     val message = NextNumberInSequence(UUID.randomUUID(), 123)
-    client.server.send(message)
+    client.serverSender.send(message)
 
     handler.serverMessages shouldEqual Seq(message)
   }
 
   def prepareClient(handler: WsrClientHandler): SimpleWsrClientSender = {
-    def server(_handler: WsrClientHandler) =
-      new ActorForwardingWsrServerHandler(_handler, testActor)
-    new SimpleWsrClientFactory(server).awaitConnect(handler)
+    new SimpleWsrClientFactory(testActor).awaitConnect(handler)
   }
 
 }
