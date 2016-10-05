@@ -1,12 +1,14 @@
 package pl.touk.wsr.writer
 
 import java.lang.management.ManagementFactory
+import java.net.InetSocketAddress
 import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
-import pl.touk.wsr.protocol.ClientMessage
-import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
+import pl.touk.wsr.transport.WsrClientFactory
+import pl.touk.wsr.transport.tcp.TcpWsrClientFactory
+import pl.touk.wsr.transport.tcp.codec.{MessagesExtractor, ServerMessageCodec}
 
 object WriterBoot extends App with LazyLogging {
 
@@ -14,14 +16,10 @@ object WriterBoot extends App with LazyLogging {
 
   val system = ActorSystem("writer")
 
-  // TODO replace by real implementation
-  val clientFactory: WsrClientFactory = new WsrClientFactory {
-    def connect(handler: WsrClientHandler): WsrClientSender = {
-      new WsrClientSender {
-        def send(message: ClientMessage): Unit = {}
-      }
-    }
-  }
+  val clientFactory: WsrClientFactory = new TcpWsrClientFactory(
+    system,
+    MessagesExtractor.empty(ServerMessageCodec.writerExtractor),
+    new InetSocketAddress("localhost", 11234))
 
   implicit val metrics = new WriterMetrics
 
