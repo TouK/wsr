@@ -8,7 +8,7 @@ trait WsrServer {
 
   protected def receiveClientMessage(message: ClientMessage): Unit
 
-  protected def send(message: ServerMessage): Unit
+  def send(message: ServerMessage): Unit
 
 }
 
