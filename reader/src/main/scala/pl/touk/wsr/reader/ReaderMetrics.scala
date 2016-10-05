@@ -6,6 +6,8 @@ trait ReaderMetricsReporter {
 
   def reportSequenceFinished(): Unit
 
+  def reportError(): Unit
+
 }
 
 class NoOpMetrics extends ReaderMetricsReporter {
@@ -13,6 +15,8 @@ class NoOpMetrics extends ReaderMetricsReporter {
   def reportSequenceStarted(): Unit = {}
 
   def reportSequenceFinished(): Unit = {}
+
+  def reportError(): Unit = {}
 
 }
 
@@ -22,6 +26,8 @@ trait ReaderMetricsMBean {
 
   def getSequencesInProgressCount: Int
 
+  def getErrorsCount: Int
+
 }
 
 class ReaderMetrics
@@ -30,6 +36,7 @@ class ReaderMetrics
 
   private var completedSequencesCount = 0
   private var sequencesInProgressCount = 0
+  private var errorsCount = 0
 
   def reportSequenceStarted(): Unit = {
     synchronized {
@@ -44,6 +51,12 @@ class ReaderMetrics
     }
   }
 
+  def reportError(): Unit = {
+    synchronized {
+      errorsCount += 1
+    }
+  }
+
   def getCompletedSequencesCount: Int = {
     synchronized {
       completedSequencesCount
@@ -53,6 +66,12 @@ class ReaderMetrics
   def getSequencesInProgressCount: Int = {
     synchronized {
       sequencesInProgressCount
+    }
+  }
+
+  def getErrorsCount: Int = {
+    synchronized {
+      errorsCount
     }
   }
 

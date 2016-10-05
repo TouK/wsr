@@ -45,6 +45,7 @@ private class SequenceReader(seqId: UUID,
       logger.debug(s"Sequence $seqId: received value $number")
       if (number != previous + 1) {
         logger.error(s"Sequence $seqId: out-of-order value $number after value $previous")
+        metrics.reportError()
       }
       client.send(Ack(seqId))
       become(receiveNext(number))
