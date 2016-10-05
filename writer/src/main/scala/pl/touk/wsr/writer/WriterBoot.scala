@@ -1,5 +1,8 @@
 package pl.touk.wsr.writer
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
+
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ClientMessage
@@ -23,6 +26,12 @@ object WriterBoot extends App with LazyLogging {
       }
     }
   }
+
+  implicit val metrics = new WriterMetrics
+
+  val mbs = ManagementFactory.getPlatformMBeanServer
+  val mBeanName = new ObjectName("pl.touk.wsr.writer:name=Writer")
+  mbs.registerMBean(metrics, mBeanName)
 
   val writer = system.actorOf(Writer.props(clientFactory))
 
