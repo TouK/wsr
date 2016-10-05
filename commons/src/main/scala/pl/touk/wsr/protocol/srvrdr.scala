@@ -10,9 +10,9 @@ object srvrdr {
 
   case class RequestForSequence(seqId: UUID) extends ReaderMessage
 
-  case class NextNumberInSequence(seqId: UUID, number: Int) extends RServerMessage
-
   case class Ack(seqId: UUID) extends ReaderMessage
+
+  case class NextNumberInSequence(seqId: UUID, number: Int) extends RServerMessage
 
   case class EndOfSequence(seqId: UUID) extends RServerMessage
 

@@ -7,7 +7,7 @@ import akka.testkit.TestKit
 import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, EndOfSequence, NextNumberInSequence, RequestForSequence}
-import pl.touk.wsr.transport.{WsrClient, WsrClientFactory, WsrHandler}
+import pl.touk.wsr.transport.{WsrClientSender, WsrClientFactory, WsrClientHandler}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
@@ -41,16 +41,16 @@ class SequencesManagerSpec
     expectMsgType[RequestForSequence]
   }
 
-  def prepareSequencesManager(numberOfSequences: Int): WsrHandler = {
-    val promise = Promise[WsrHandler]()
+  def prepareSequencesManager(numberOfSequences: Int): WsrClientHandler = {
+    val promise = Promise[WsrClientHandler]()
     system.actorOf(
       SequencesManager.props(
         numberOfSequences,
         new WsrClientFactory {
-          def connect(handler: WsrHandler): Future[WsrClient] = {
+          def connect(handler: WsrClientHandler): Future[WsrClientSender] = {
             promise.success(handler)
             Future.successful {
-              new WsrClient {
+              new WsrClientSender {
                 def send(message: ClientMessage): Unit = {
                   testActor ! message
                 }

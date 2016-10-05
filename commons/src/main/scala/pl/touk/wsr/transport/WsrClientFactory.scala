@@ -4,19 +4,19 @@ import pl.touk.wsr.protocol._
 
 import scala.concurrent.Future
 
-trait WsrClient {
+trait WsrClientFactory {
+
+  def connect(handler: WsrClientHandler): Future[WsrClientSender]
+
+}
+
+trait WsrClientSender {
 
   def send(message: ClientMessage): Unit
 
 }
 
-trait WsrClientFactory {
-
-  def connect(handler: WsrHandler): Future[WsrClient]
-
-}
-
-trait WsrHandler {
+trait WsrClientHandler {
 
   def onMessage(message: ServerMessage): Unit
 

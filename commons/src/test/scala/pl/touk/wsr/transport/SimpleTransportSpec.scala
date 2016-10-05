@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.protocol.srvrdr.NextNumberInSequence
 import pl.touk.wsr.protocol.wrtsrv.Greeting
-import pl.touk.wsr.transport.simple.{ActorForwardingWsrServer, SimpleWsrClient, SimpleWsrClientFactory}
+import pl.touk.wsr.transport.simple.{ActorForwardingWsrServerHandler, SimpleWsrClientSender, SimpleWsrClientFactory}
 
 class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) with FlatSpecLike with Matchers {
 
@@ -21,7 +21,7 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
   }
 
   it should "notify handler about connection lost" in {
-    val handler = new MockWsrHandler
+    val handler = new MockWsrClientHandler
     val client = prepareClient(handler)
 
     client.server.connectionLost()
@@ -30,7 +30,7 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
   }
 
   it should "notify about server message" in {
-    val handler = new MockWsrHandler
+    val handler = new MockWsrClientHandler
     val client = prepareClient(handler)
 
     val message = NextNumberInSequence(UUID.randomUUID(), 123)
@@ -39,15 +39,15 @@ class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) wi
     handler.serverMessages shouldEqual Seq(message)
   }
 
-  def prepareClient(handler: WsrHandler): SimpleWsrClient = {
-    def server(_handler: WsrHandler) =
-      new ActorForwardingWsrServer(_handler, testActor)
+  def prepareClient(handler: WsrClientHandler): SimpleWsrClientSender = {
+    def server(_handler: WsrClientHandler) =
+      new ActorForwardingWsrServerHandler(_handler, testActor)
     new SimpleWsrClientFactory(server).awaitConnect(handler)
   }
 
 }
 
-class MockWsrHandler extends WsrHandler {
+class MockWsrClientHandler extends WsrClientHandler {
   @volatile var serverMessages = IndexedSeq.empty[ServerMessage]
 
   @volatile var connectionLost: Boolean = false

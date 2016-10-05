@@ -5,7 +5,7 @@ import akka.testkit.TestKit
 import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.wrtsrv.{NextNumber, RequestForNumbers}
-import pl.touk.wsr.transport.WsrClient
+import pl.touk.wsr.transport.WsrClientSender
 
 class WriterSpec
   extends TestKit(ActorSystem("WriterSpec"))
@@ -35,7 +35,7 @@ class WriterSpec
   def prepareWriter(): ActorRef = {
     system.actorOf(
       Writer.props(
-        new WsrClient {
+        new WsrClientSender {
           def send(message: ClientMessage): Unit = {
             testActor ! message
           }
