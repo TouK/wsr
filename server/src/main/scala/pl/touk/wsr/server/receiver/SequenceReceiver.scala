@@ -4,6 +4,7 @@ import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers, WriterMessage}
+import pl.touk.wsr.server.receiver.SequenceReceiver.{Free, Full}
 import pl.touk.wsr.server.storage.StorageManager._
 import pl.touk.wsr.transport.{WsrServerHandler, WsrServerSender}
 
@@ -21,7 +22,7 @@ class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
 
   private def common: Receive = {
     case Greeting =>
-      storage ! IsFreeDataSpace
+      storage ! HasFreeDataSpace
       become(waitingForDataSpaceInfo)
   }
 
@@ -49,6 +50,9 @@ class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
 object SequenceReceiver {
   def props(serverSender: WsrServerSender, storage: ActorRef): Props =
     Props(new SequenceReceiver(serverSender, storage))
+
+  case class Free(offset: Int, size: Int)
+  case object Full
 }
 
 class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
