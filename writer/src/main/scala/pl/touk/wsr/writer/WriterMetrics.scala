@@ -36,7 +36,7 @@ class WriterMetrics
 
   private var completedRequestsCount = 0
   private var requestsInProgressCount = 0
-  private var errorsCount = 0
+  @volatile private var errorsCount = 0
 
   def reportRequestStarted(): Unit = {
     synchronized {
@@ -52,9 +52,7 @@ class WriterMetrics
   }
 
   def reportError(): Unit = {
-    synchronized {
-      errorsCount += 1
-    }
+    errorsCount += 1
   }
 
   def getCompletedRequestsCount: Int = {
@@ -70,9 +68,7 @@ class WriterMetrics
   }
 
   def getErrorsCount: Int = {
-    synchronized {
-      errorsCount
-    }
+    errorsCount
   }
 
 }

@@ -6,10 +6,12 @@ import akka.actor.{Actor, ActorRef, Props, Terminated}
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, ReaderMessage, RequestForSequence}
+import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.sender.SequenceSender.Next
 import pl.touk.wsr.transport.{WsrServerHandler, WsrServerSender}
 
 class SequenceSenderCoordinator(sender: WsrServerSender, storage: ActorRef)
+                               (implicit metrics: ServerMetricsReporter)
   extends Actor with LazyLogging {
 
   private var sequenceSenders = Map.empty[UUID, ActorRef]
@@ -26,17 +28,21 @@ class SequenceSenderCoordinator(sender: WsrServerSender, storage: ActorRef)
 
   private def handleAck(seqId: UUID): Unit = {
     sequenceSenders.get(seqId) match {
-      case Some(seqSender) => seqSender ! Next
-      case None => logger.error(s"Cannot find Sequence Sender for id=[${seqId.toString}]")
+      case Some(seqSender) =>
+        seqSender ! Next
+      case None =>
+        logger.error(s"Cannot find Sequence Sender for id=[${seqId.toString}]")
+        metrics.reportError()
     }
   }
 
   private def handleSequenceSenderTermination(seqSender: ActorRef): Unit = {
-    sequenceSenders.find { case (_, ref) => ref == seqSender} match {
+    sequenceSenders.find { case (_, ref) => ref == seqSender } match {
       case Some((seqId, _)) =>
         sequenceSenders = sequenceSenders - seqId
       case None =>
         logger.error("There is no Sequence sender in map!")
+        metrics.reportError()
     }
   }
 
@@ -48,7 +54,8 @@ class SequenceSenderCoordinator(sender: WsrServerSender, storage: ActorRef)
 }
 
 object SequenceSenderCoordinator {
-  def props(sender: WsrServerSender, storage: ActorRef): Props =
+  def props(sender: WsrServerSender, storage: ActorRef)
+           (implicit metrics: ServerMetricsReporter): Props =
     Props(new SequenceSenderCoordinator(sender, storage))
 }
 

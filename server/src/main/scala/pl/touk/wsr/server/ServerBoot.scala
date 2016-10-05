@@ -1,5 +1,8 @@
 package pl.touk.wsr.server
 
+import java.lang.management.ManagementFactory
+import javax.management.ObjectName
+
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.server.receiver.{SequenceReceiver, SupplyingSequenceReceiver}
@@ -21,6 +24,12 @@ object ServerBoot extends App with LazyLogging {
   val readerSideFactory = new WsrServerFactory {
     override def bind(server: (WsrServerSender) => WsrServerHandler): Future[Unit] = Future.successful(Unit)
   }
+
+  implicit val metrics = new ServerMetrics
+
+  val mbs = ManagementFactory.getPlatformMBeanServer
+  val mBeanName = new ObjectName("pl.touk.wsr.server:name=Server")
+  mbs.registerMBean(metrics, mBeanName)
 
   val storageManager = system.actorOf(StorageManager.props(new HsqlDbStorage), "storage-manager")
   writerSideFactory.bind { sender: WsrServerSender =>

@@ -8,8 +8,6 @@ import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
 
-import scala.concurrent.Future
-
 object ReaderBoot extends App with LazyLogging {
 
   logger.info("READER HAS STARTED ....")

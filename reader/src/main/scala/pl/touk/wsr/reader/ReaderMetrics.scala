@@ -36,7 +36,7 @@ class ReaderMetrics
 
   private var completedSequencesCount = 0
   private var sequencesInProgressCount = 0
-  private var errorsCount = 0
+  @volatile private var errorsCount = 0
 
   def reportSequenceStarted(): Unit = {
     synchronized {
@@ -52,9 +52,7 @@ class ReaderMetrics
   }
 
   def reportError(): Unit = {
-    synchronized {
-      errorsCount += 1
-    }
+    errorsCount += 1
   }
 
   def getCompletedSequencesCount: Int = {
@@ -70,9 +68,7 @@ class ReaderMetrics
   }
 
   def getErrorsCount: Int = {
-    synchronized {
-      errorsCount
-    }
+    errorsCount
   }
 
 }
