@@ -41,8 +41,8 @@ object ClientMessageCodec extends CodecCommons {
 
   val writerExtractor = WaitingForGreetingWriterExtractor
 
-  object WaitingForGreetingWriterExtractor extends SingleMessageExtractor[WriterMessage] {
-    override def extractMessage(str: EnrichedByteString): Option[(WriterMessage, SingleMessageExtractor[WriterMessage], EnrichedByteString)] = {
+  object WaitingForGreetingWriterExtractor extends SingleMessageExtractor[ClientMessage] {
+    override def extractMessage(str: EnrichedByteString): Option[(ClientMessage, SingleMessageExtractor[ClientMessage], EnrichedByteString)] = {
       str.readInt().map {
         case (i, rest) =>
           if (i != 0)
@@ -52,8 +52,8 @@ object ClientMessageCodec extends CodecCommons {
     }
   }
 
-  object WaitingForNextNumberWriterExtractor extends SingleMessageExtractor[WriterMessage] {
-    override def extractMessage(str: EnrichedByteString): Option[(WriterMessage, SingleMessageExtractor[WriterMessage], EnrichedByteString)] = {
+  object WaitingForNextNumberWriterExtractor extends SingleMessageExtractor[ClientMessage] {
+    override def extractMessage(str: EnrichedByteString): Option[(ClientMessage, SingleMessageExtractor[ClientMessage], EnrichedByteString)] = {
       str.readInt().map {
         case (i, rest) =>
           (NextNumber(i), this, rest)

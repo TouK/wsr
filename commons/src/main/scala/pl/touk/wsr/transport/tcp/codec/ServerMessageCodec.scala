@@ -35,4 +35,15 @@ object ServerMessageCodec extends CodecCommons {
     }
   }
 
+  val writerExtractor = WaitingForRequestForNumbersExtractor
+
+  object WaitingForRequestForNumbersExtractor extends SingleMessageExtractor[ServerMessage] {
+    override def extractMessage(str: EnrichedByteString): Option[(ServerMessage, SingleMessageExtractor[ServerMessage], EnrichedByteString)] = {
+      for {
+        (start, afterStart) <- str.readInt()
+        (count, afterCount) <- afterStart.readInt()
+      } yield (RequestForNumbers(start, count), this, afterCount)
+    }
+  }
+
 }

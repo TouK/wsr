@@ -2,30 +2,32 @@ package pl.touk.wsr.transport.tcp
 
 import java.net.InetSocketAddress
 
-import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Stash, Status}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Stash, Status}
 import akka.io.Tcp._
 import akka.io.{IO, Tcp}
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 import pl.touk.wsr.transport.tcp.BindingActor._
-import pl.touk.wsr.transport.tcp.ConnectionActor._
+import pl.touk.wsr.transport.tcp.ConnectionHandlerActor._
 import pl.touk.wsr.transport.tcp.codec.{MessagesExtractor, ServerMessageCodec}
 import akka.pattern._
+import akka.routing.{ActorRefRoutee, RoundRobinRoutingLogic, Router}
 import akka.util.Timeout
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class TcpWsrServerFactory(actorRefFactory: ActorRefFactory,
-                          handler: WsrServerHandler,
                           initialExtractor: MessagesExtractor[ClientMessage],
                           localAddress: InetSocketAddress) extends WsrServerFactory{
 
-  override def bind(server: WsrServerSender => WsrServerHandler): Future[Unit] = {
+  override def bind(handler: WsrServerHandler)
+                   (implicit ec: ExecutionContext): Future[WsrServerSender] = {
     val bindingActor = actorRefFactory.actorOf(Props(new BindingActor(handler, initialExtractor)))
+    val sender = new TcpWsrServerSender(bindingActor)
     implicit val bindTimeout = Timeout(35 seconds) // TODO: from configuration
-    (bindingActor ? DoBind(localAddress)).mapTo[Unit]
+    (bindingActor ? DoBind(localAddress)).map(_ => sender)
   }
 
 }
@@ -38,10 +40,12 @@ class TcpWsrServerSender(actor: ActorRef) extends WsrServerSender {
 
 }
 
-class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtractor[ClientMessage]) extends Actor with Stash {
+class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtractor[ClientMessage]) extends Actor with Stash with ActorLogging {
 
   import Tcp._
   import context.system
+
+  var router = Router(RoundRobinRoutingLogic())
 
   def receive = {
     case DoBind(localAddress) =>
@@ -64,18 +68,18 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtracto
   val bound: Receive = {
     case c: Connected =>
       val connection = sender()
-      connection ! Register(context.actorOf(Props(new ConnectionActor(handler, initialExtractor, connection))))
-    case write: Write =>
-      // TODO: router write
-    case other =>
-      // TODO: Logging, unbind
+      val handlerActor = context.actorOf(Props(new ConnectionHandlerActor(handler, initialExtractor, connection)))
+      router = Router(RoundRobinRoutingLogic(), context.children.map(ActorRefRoutee).toIndexedSeq)
+      connection ! Register(handlerActor)
+    case msg: ServerMessage =>
+      router.route(msg, sender())
   }
 
 }
 
-class ConnectionActor(handler: WsrServerHandler,
-                      var extractor: MessagesExtractor[ClientMessage],
-                      connection: ActorRef) extends Actor {
+class ConnectionHandlerActor(handler: WsrServerHandler,
+                             var extractor: MessagesExtractor[ClientMessage],
+                             connection: ActorRef) extends Actor {
 
   override def receive: Receive = {
     case msg: ServerMessage =>
@@ -111,7 +115,7 @@ object BindingActor {
 
 }
 
-object ConnectionActor {
+object ConnectionHandlerActor {
 
   class WriteFiledException(msg: String) extends Exception(msg)
 
