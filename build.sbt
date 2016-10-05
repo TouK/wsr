@@ -26,6 +26,7 @@ lazy val commons = project.in(file("commons"))
       Seq(
         "com.typesafe.akka"                   %% "akka-actor"                   % akkaV,
         "com.typesafe.scala-logging"          %% "scala-logging"                % scalaLoggingV,
+        "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
     }

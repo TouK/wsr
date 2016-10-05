@@ -14,6 +14,6 @@ trait WsrServer {
 
 trait WsrServerFactory {
 
-  def bind(): Future[WsrServer]
+  def bind(server: WsrServer): Unit
 
 }
