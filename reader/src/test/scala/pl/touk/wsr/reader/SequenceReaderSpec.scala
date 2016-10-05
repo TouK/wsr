@@ -14,6 +14,8 @@ class SequenceReaderSpec
     with FlatSpecLike
     with Matchers {
 
+  implicit val metrics = new NoOpMetrics
+
   it should "send request for sequence" in {
     prepareSequenceReader()
     expectMsgType[RequestForSequence]

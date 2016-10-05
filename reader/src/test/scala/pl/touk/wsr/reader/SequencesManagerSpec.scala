@@ -7,7 +7,7 @@ import akka.testkit.TestKit
 import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, EndOfSequence, NextNumberInSequence, RequestForSequence}
-import pl.touk.wsr.transport.{WsrClientSender, WsrClientFactory, WsrClientHandler}
+import pl.touk.wsr.transport.{WsrClientFactory, WsrClientHandler, WsrClientSender}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, Promise}
@@ -16,6 +16,8 @@ class SequencesManagerSpec
   extends TestKit(ActorSystem("SequencesManagerSpec"))
     with FlatSpecLike
     with Matchers {
+
+  implicit val metrics = new NoOpMetrics
 
   it should "handle single sequence" in {
     val handler = prepareSequencesManager(1)
