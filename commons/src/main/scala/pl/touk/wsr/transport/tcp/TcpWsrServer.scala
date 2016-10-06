@@ -9,7 +9,7 @@ import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 import pl.touk.wsr.transport.tcp.BindingActor._
 import pl.touk.wsr.transport.tcp.ConnectionHandlerActor._
-import pl.touk.wsr.transport.tcp.codec.{MessagesExtractor, ServerMessageCodec}
+import pl.touk.wsr.transport.tcp.codec.{MessagesExtractor, ServerMessageCodec, SingleMessageExtractor}
 import akka.pattern._
 import akka.routing.{ActorRefRoutee, RoundRobinRoutingLogic, Router}
 import akka.util.Timeout
@@ -19,7 +19,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 class TcpWsrServerFactory(actorRefFactory: ActorRefFactory,
-                          initialExtractor: MessagesExtractor[ClientMessage],
+                          initialExtractor: SingleMessageExtractor[ClientMessage],
                           localAddress: InetSocketAddress) extends WsrServerFactory{
 
   override def bind(handler: WsrServerHandler)
@@ -40,7 +40,7 @@ class TcpWsrServerSender(actor: ActorRef) extends WsrServerSender {
 
 }
 
-class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtractor[ClientMessage]) extends Actor with Stash with ActorLogging {
+class BindingActor(handler: WsrServerHandler, initialExtractor: SingleMessageExtractor[ClientMessage]) extends Actor with Stash with ActorLogging {
 
   import Tcp._
   import context.system
@@ -78,8 +78,10 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: MessagesExtracto
 }
 
 class ConnectionHandlerActor(handler: WsrServerHandler,
-                             var extractor: MessagesExtractor[ClientMessage],
+                             initialExtractor: SingleMessageExtractor[ClientMessage],
                              connection: ActorRef) extends Actor {
+
+  private var extractor = MessagesExtractor.empty(initialExtractor)
 
   override def receive: Receive = {
     case msg: ServerMessage =>
