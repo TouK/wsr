@@ -17,6 +17,17 @@ val commonSettings =
 val akkaV             = "2.4.11"
 val scalaTestV        = "3.0.0"
 
+def entryPointArgs(name: String, debugPort: Int, jmxPort: Int) =
+  Seq(
+    s"bin/$name",
+    "-jvm-debug", debugPort.toString,
+    "-Dcom.sun.management.jmxremote",
+    s"-Dcom.sun.management.jmxremote.port=$jmxPort",
+    "-Dcom.sun.management.jmxremote.local.only=false",
+    "-Dcom.sun.management.jmxremote.authenticate=false",
+    "-Dcom.sun.management.jmxremote.ssl=false"
+  )
+
 lazy val commons = project.in(file("commons"))
   .settings(commonSettings)
   .settings(
@@ -49,7 +60,7 @@ lazy val writer = project.in(file("writer"))
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
     },
-    dockerEntrypoint := Seq("bin/wsr-writer", "-jvm-debug", "9991")
+    dockerEntrypoint := entryPointArgs(name.value, 9991, 9981)
   )
   .dependsOn(commons)
 
@@ -66,7 +77,7 @@ lazy val reader = project.in(file("reader"))
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
     },
-    dockerEntrypoint := Seq("bin/wsr-reader", "-jvm-debug", "9993")
+    dockerEntrypoint := entryPointArgs(name.value, 9993, 9983)
   )
   .dependsOn(commons)
 
@@ -83,7 +94,7 @@ lazy val server = project.in(file("server"))
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
     },
-    dockerEntrypoint := Seq("bin/wsr-server", "-jvm-debug", "9992")
+    dockerEntrypoint := entryPointArgs(name.value, 9992, 9982)
   )
   .dependsOn(commons)
 
