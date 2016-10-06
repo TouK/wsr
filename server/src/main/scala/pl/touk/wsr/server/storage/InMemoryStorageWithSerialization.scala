@@ -29,7 +29,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
 
   private var dataPacks: Seq[DataPackWithReservation] = load().map(_.toSeq).getOrElse(Seq.empty[DataPackWithReservation])
   private var unpackedData: Seq[Int] = Seq.empty[Int]
-  private var nextOffset = dataPacks.lastOption.flatMap(_.dataPack.sequence.lastOption).getOrElse(0)
+  private var nextOffset = dataPacks.lastOption.flatMap(_.dataPack.sequence.lastOption)
   private var waitingFor = 0
 
   override def addData(number: Int): Future[Unit] = Future.successful {
@@ -43,7 +43,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
       } else {
         unpackedData = newUnpackedData
       }
-      waitingFor = waitingFor -1
+      waitingFor = Math.max(waitingFor - 1, 0)
       save()
       logStorageState("after adding")
     }
@@ -81,8 +81,8 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
         else {
           val freeSpaceSize = (maxPacksDataSize - dataPacks.length) * dataPackSize
           if (freeSpaceSize + dataPacks.length * dataPackSize <= maxPacksDataSize * dataPackSize) {
-            val freeDataSpace = FreeDataSpace(freeSpaceSize - waitingFor, nextOffset)
-            nextOffset = freeDataSpace.offset + freeDataSpace.size
+            val freeDataSpace = FreeDataSpace(freeSpaceSize - waitingFor, nextOffset.getOrElse(dataPacks.size * dataPackSize))
+            nextOffset = Some(freeDataSpace.offset + freeDataSpace.size)
             freeDataSpace
           } else {
             NoFreeDataSpace
@@ -94,25 +94,26 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
   }
 
   private def logStorageState(info: String) = {
-    logger.debug(s"""
-        |---------  STORAGE ---------
-        |--------- $info
-        | max-size: ${maxPacksDataSize * dataPackSize}
-        | use-size: ${dataPacks.size * dataPackSize}
-        |----------------------------
-        |""".stripMargin
+    logger.debug(
+      s"""
+         |---------  STORAGE ---------
+         |--------- $info
+         | max-size: ${maxPacksDataSize * dataPackSize}
+         | use-size: ${dataPacks.size * dataPackSize}
+         |----------------------------
+         |""".stripMargin
     )
   }
 
   override def freeRequestedDataSpace: Future[Unit] = Future.successful {
     synchronized {
-      nextOffset = nextOffset - waitingFor
+      nextOffset = nextOffset.map(_ - waitingFor)
       waitingFor = 0
     }
   }
 
   private def save() = {
-    if(serializable) {
+    if (serializable) {
       Try {
         val oos = new ObjectOutputStream(new FileOutputStream(dataPath))
         oos.writeObject(dataPacks.flatMap(_.dataPack.sequence))
@@ -129,7 +130,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
   }
 
   private def load(): Try[Seq[DataPackWithReservation]] = {
-    if(serializable) {
+    if (serializable) {
       Try {
         val ois = new ObjectInputStream(new FileInputStream(dataPath))
         val loadedDataPacks = ois.readObject.asInstanceOf[Seq[Int]]
