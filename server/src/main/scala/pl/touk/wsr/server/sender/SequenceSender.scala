@@ -11,7 +11,6 @@ import pl.touk.wsr.server.storage.StorageManager.{DataProcessed, DataRequest}
 import pl.touk.wsr.server.storage.{DataPack, DataPackId}
 import pl.touk.wsr.transport.WsrServerSender
 
-// todo: there is no info about connection death (supervisor should clean resources)
 class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorRef)
                     (implicit metrics: ServerMetricsReporter)
   extends Actor with LazyLogging {

@@ -30,7 +30,9 @@ class StorageManager(storage: Storage)
     case NonUnreservedDataToDispatch(waiter, insertAtTheBeginning) =>
       handleNonUnreservedDataToDispatch(waiter, insertAtTheBeginning)
     case HasFreeDataSpace =>
-      handleHasFreeDataSpace(sender())
+      storage.freeRequestedDataSpace.andThen { case _ =>
+        handleHasFreeDataSpace(sender())
+      }
     case DataRequest =>
       handleDataRequest(sender())
     case DataProcessed(id) =>
@@ -43,7 +45,6 @@ class StorageManager(storage: Storage)
 
   private def handleRegisterFreeDataSpaceListener(listener: ActorRef): Unit = {
     freeDataSpaceListener = Some(listener)
-    storage.freeRequestedDataSpace
   }
 
   private def handleStoreNumber(number: Int): Unit = {
