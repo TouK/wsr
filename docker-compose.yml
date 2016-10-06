@@ -6,11 +6,13 @@ services:
     depends_on:
       - server
     ports:
+      - 9981:9981
       - 9991:9991
   
   server:
     image: wsr/wsr-server:1.0
     ports:
+      - 9982:9982
       - 9992:9992
   
   reader:
@@ -18,4 +20,5 @@ services:
     depends_on:
       - server
     ports:
+      - 9983:9983
       - 9993:9993
