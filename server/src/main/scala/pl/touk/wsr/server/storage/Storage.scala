@@ -12,7 +12,9 @@ trait Storage {
 
   def cancelDataPackReservation(id: DataPackId): Future[Unit]
 
-  def hasFreeDataSpace: Future[DataSpace]
+  def requestForFreeDataSpace: Future[DataSpace]
+
+  def freeRequestedDataSpace: Future[Unit]
 }
 
 trait DataPackId

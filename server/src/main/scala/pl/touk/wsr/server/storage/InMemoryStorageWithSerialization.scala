@@ -1,6 +1,6 @@
 package pl.touk.wsr.server.storage
 
-import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
+import java.io._
 import java.util.UUID
 
 import com.typesafe.scalalogging.LazyLogging
@@ -26,16 +26,23 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
 
   private var dataPacks: Seq[DataPackWithReservation] = load().map(_.toSeq).getOrElse(Seq.empty[DataPackWithReservation])
   private var unpackedData: Seq[Int] = Seq.empty[Int]
+  private var requestedDataSpace = FreeDataSpace(0, 0)
 
   override def addData(number: Int): Future[Unit] = Future.successful {
     synchronized {
       val newUnpackedData = unpackedData :+ number
       if (newUnpackedData.length == dataPackSize) {
+        logStorageState("adding")
         val dataPack = DataPackWithReservation(DataPack(UUIDDataPackId(), newUnpackedData))
         dataPacks = dataPacks :+ dataPack
         unpackedData = List.empty[Int]
+        logStorageState("after adding")
       } else {
         unpackedData = newUnpackedData
+        requestedDataSpace = FreeDataSpace(
+          size = requestedDataSpace.size - dataPackSize,
+          offset = requestedDataSpace.offset + dataPackSize
+        )
       }
       save()
     }
@@ -65,13 +72,46 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
     }
   }
 
-  override def hasFreeDataSpace: Future[DataSpace] = Future.successful {
+  override def requestForFreeDataSpace: Future[DataSpace] = Future.successful {
     synchronized {
-      if (maxPacksDataSize <= dataPacks.length) NoFreeDataSpace
-      else FreeDataSpace(
-        (maxPacksDataSize - dataPacks.length) * dataPackSize,
-        if (unpackedData.nonEmpty) unpackedData.last else dataPacks.lastOption.flatMap(_.dataPack.sequence.lastOption).getOrElse(0)
-      )
+      val maxSize = maxPacksDataSize * dataPackSize
+      val freeSize = maxSize - dataPacks.size * dataPackSize
+
+      logStorageState("Before request")
+      val result =
+        if (maxPacksDataSize <= dataPacks.length) NoFreeDataSpace
+        else {
+          val freeSpaceSize = (maxPacksDataSize - dataPacks.length) * dataPackSize
+          val offset = if (unpackedData.nonEmpty) unpackedData.last else requestedDataSpace.offset + requestedDataSpace.size
+          if (freeSpaceSize + dataPacks.length * dataPackSize <= maxPacksDataSize * dataPackSize) {
+            val freeDataSpace = FreeDataSpace(requestedDataSpace.size + freeSpaceSize, requestedDataSpace.size + offset)
+            requestedDataSpace = FreeDataSpace(requestedDataSpace.size + freeDataSpace.size, requestedDataSpace.offset)
+            freeDataSpace
+          } else {
+            NoFreeDataSpace
+          }
+        }
+      logStorageState("After request")
+      result
+    }
+  }
+
+  private def logStorageState(info: String) = {
+    val maxSize = maxPacksDataSize * dataPackSize
+    logger.debug(s"""
+        |---------  STORAGE ---------
+        |--------- $info
+        | max-size:  $maxSize
+        | free-size: ${maxSize - dataPacks.size * dataPackSize}
+        | requested: (offset: ${requestedDataSpace.offset}, size: ${requestedDataSpace.size})
+        |----------------------------
+        |""".stripMargin
+    )
+  }
+
+  override def freeRequestedDataSpace: Future[Unit] = Future.successful {
+    synchronized {
+      requestedDataSpace = FreeDataSpace(0, 0)
     }
   }
 
@@ -84,6 +124,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
       r
     case r@Failure(ex) =>
       logger.error("Serialization fails!", ex)
+      Try(new File(dataPath).delete())
       r
   }
 
@@ -99,4 +140,5 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
       ).toSeq
     }
   }
+
 }

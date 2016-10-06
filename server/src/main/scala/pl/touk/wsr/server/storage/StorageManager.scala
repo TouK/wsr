@@ -78,10 +78,13 @@ class StorageManager(storage: Storage)
   }
 
   private def handleHasFreeDataSpace(dataRequestSender: ActorRef): Future[Unit] = {
-    storage.hasFreeDataSpace.map {
-      case NoFreeDataSpace => dataRequestSender ! Full
-      case FreeDataSpace(size, offset) => dataRequestSender ! Free(offset, size)
-    } andThen { case Failure(ex) =>
+    (for {
+      _ <- storage.freeRequestedDataSpace
+      _ <- storage.requestForFreeDataSpace.map {
+        case NoFreeDataSpace => dataRequestSender ! Full
+        case FreeDataSpace(size, offset) => dataRequestSender ! Free(offset, size)
+      }
+    } yield {}) andThen { case Failure(ex) =>
       logger.error("Storage error", ex)
     }
   }
