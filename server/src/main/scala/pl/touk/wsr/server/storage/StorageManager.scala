@@ -43,6 +43,7 @@ class StorageManager(storage: Storage)
 
   private def handleRegisterFreeDataSpaceListener(listener: ActorRef): Unit = {
     freeDataSpaceListener = Some(listener)
+    storage.freeRequestedDataSpace
   }
 
   private def handleStoreNumber(number: Int): Unit = {
@@ -79,7 +80,6 @@ class StorageManager(storage: Storage)
 
   private def handleHasFreeDataSpace(dataRequestSender: ActorRef): Future[Unit] = {
     (for {
-      _ <- storage.freeRequestedDataSpace
       _ <- storage.requestForFreeDataSpace.map {
         case NoFreeDataSpace => dataRequestSender ! Full
         case FreeDataSpace(size, offset) => dataRequestSender ! Free(offset, size)
