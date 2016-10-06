@@ -1,8 +1,5 @@
 package pl.touk.wsr.transport.tcp.codec
 
-import java.nio.ByteOrder
-import java.util.UUID
-
 import akka.util.ByteStringBuilder
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, ReaderMessage, RequestForSequence}
@@ -35,6 +32,7 @@ object ClientMessageCodec extends CodecCommons {
         builder.putInt(0)
       case Ack(seqId) =>
         encodeUuid(builder, seqId)
+        builder.putInt(1) // TODO: whithout this server can't recognize if got RequestForSequence or Ack without additional knowledge of msg sent from his site
     }
   }
 
@@ -57,6 +55,23 @@ object ClientMessageCodec extends CodecCommons {
       str.readInt().map {
         case (i, rest) =>
           (NextNumber(i), this, rest)
+      }
+    }
+  }
+
+  val readerExtractor = WaitingForRequestForSequence
+
+  object WaitingForRequestForSequence extends SingleMessageExtractor[ClientMessage] {
+    override def extractMessage(str: EnrichedByteString): Option[(ClientMessage, SingleMessageExtractor[ClientMessage], EnrichedByteString)] = {
+      for {
+        (seqId, afterSeqId) <- str.readUuid()
+        (number, afterNumber) <- afterSeqId.readInt()
+      } yield {
+        val msg = number match {
+          case 0 => RequestForSequence(seqId)
+          case 1 => Ack(seqId)
+        }
+        (msg, this, afterNumber)
       }
     }
   }

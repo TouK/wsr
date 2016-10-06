@@ -7,8 +7,7 @@ import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.server.utils.ScalaUtils._
 
 import scala.concurrent.Future
-import scala.util.Try
-import scala.collection.immutable.Seq
+import scala.util.{Failure, Success, Try}
 
 class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int, dataPath: String)
   extends Storage with LazyLogging {
@@ -16,21 +15,24 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
   @SerialVersionUID(100L)
   private case class UUIDDataPackId(uuid: UUID) extends DataPackId with Serializable
 
+  private object UUIDDataPackId {
+    def apply(): UUIDDataPackId = UUIDDataPackId(UUID.randomUUID())
+  }
+
   private case class DataPackWithReservation(dataPack: DataPack, reserved: Boolean)
 
   private object DataPackWithReservation {
     def apply(data: DataPack): DataPackWithReservation = DataPackWithReservation(data, reserved = false)
   }
 
-  private var dataPacks = load().map(_.map(DataPackWithReservation(_))).getOrElse(Seq.empty[DataPackWithReservation])
+  private var dataPacks: Seq[DataPackWithReservation] = load().map(_.toSeq).getOrElse(Seq.empty[DataPackWithReservation])
   private var unpackedData: Seq[Int] = Seq.empty[Int]
 
   override def addData(number: Int): Future[Unit] = Future.successful {
     synchronized {
       val newUnpackedData = unpackedData :+ number
       if (newUnpackedData.length == dataPackSize) {
-        val dataPackId = UUIDDataPackId(UUID.randomUUID())
-        val dataPack = DataPackWithReservation(DataPack(dataPackId, newUnpackedData))
+        val dataPack = DataPackWithReservation(DataPack(UUIDDataPackId(), newUnpackedData))
         dataPacks = dataPacks :+ dataPack
         unpackedData = List.empty[Int]
       } else {
@@ -76,16 +78,26 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
 
   private def save() = Try {
     val oos = new ObjectOutputStream(new FileOutputStream(dataPath))
-    oos.writeObject(dataPacks.map(_.dataPack))
+    oos.writeObject(dataPacks.flatMap(_.dataPack.sequence))
     oos.close()
-  } getOrElse {
-    logger.error("Serialization fails!")
+  } match {
+    case r@Success(_) =>
+      r
+    case r@Failure(ex) =>
+      logger.error("Serialization fails!", ex)
+      r
   }
 
-  private def load() = Try {
-    val ois = new ObjectInputStream(new FileInputStream(dataPath))
-    val loadedDataPacks = ois.readObject.asInstanceOf[Seq[DataPack]]
-    ois.close()
-    loadedDataPacks
+  private def load(): Try[Seq[DataPackWithReservation]] = {
+    Try {
+      val ois = new ObjectInputStream(new FileInputStream(dataPath))
+      val loadedDataPacks = ois.readObject.asInstanceOf[Seq[Int]]
+      ois.close()
+      loadedDataPacks
+    } map { list =>
+      list.grouped(dataPackSize).map(group =>
+        DataPackWithReservation(DataPack(UUIDDataPackId(), group), reserved = false)
+      ).toSeq
+    }
   }
 }

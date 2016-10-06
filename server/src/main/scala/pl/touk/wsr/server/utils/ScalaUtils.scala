@@ -1,7 +1,5 @@
 package pl.touk.wsr.server.utils
 
-import scala.collection.immutable.Seq
-
 object ScalaUtils {
 
   implicit class SeqOps[T](seq: Seq[T]) {

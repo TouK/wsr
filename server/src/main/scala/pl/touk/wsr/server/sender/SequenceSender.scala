@@ -4,10 +4,10 @@ import java.util.UUID
 
 import akka.actor.{Actor, ActorRef, Props}
 import com.typesafe.scalalogging.LazyLogging
-import pl.touk.wsr.protocol.srvrdr.NextNumberInSequence
+import pl.touk.wsr.protocol.srvrdr.{EndOfSequence, NextNumberInSequence}
 import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.sender.SequenceSender.{Next, RequestedData}
-import pl.touk.wsr.server.storage.StorageManager.{DataRequest, DataProcessed}
+import pl.touk.wsr.server.storage.StorageManager.{DataProcessed, DataRequest}
 import pl.touk.wsr.server.storage.{DataPack, DataPackId}
 import pl.touk.wsr.transport.WsrServerSender
 
@@ -40,6 +40,7 @@ class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorR
   }
 
   private def finishSending(): Unit = {
+    serverSender.send(EndOfSequence(seqId))
     sequencePackId.foreach(id => storage ! DataProcessed(id))
     context.stop(self)
   }
