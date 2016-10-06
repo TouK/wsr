@@ -9,8 +9,8 @@ import org.scalatest.time.{Second, Seconds, Span}
 import org.scalatest.{FlatSpecLike, Matchers}
 import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.wrtsrv.{Greeting, RequestForNumbers}
-import pl.touk.wsr.transport.{MockWsrClientHandler, WsrClientSender, WsrServerHandler, WsrServerSender}
-import pl.touk.wsr.transport.tcp.codec.{ClientMessageCodec, MessagesExtractor, ServerMessageCodec}
+import pl.touk.wsr.transport.tcp.codec.{ClientMessageCodec, ServerMessageCodec}
+import pl.touk.wsr.transport.{MockWsrClientHandler, WsrServerHandler, WsrServerSender}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -30,6 +30,7 @@ class TcpTransportSpec extends TestKit(ActorSystem("TcpTransportSpec")) with Fla
         message shouldEqual Greeting
         serverSender.send(RequestForNumbers(1, 2))
       }
+      override def onConnectionLost(): Unit = {}
     }
 
     val serverFactory = new TcpWsrServerFactory(system, ClientMessageCodec.writerExtractor, address)

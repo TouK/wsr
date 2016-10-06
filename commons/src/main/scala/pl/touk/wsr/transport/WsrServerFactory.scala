@@ -21,4 +21,6 @@ trait WsrServerHandler {
 
   def onMessage(message: ClientMessage): Unit
 
+  def onConnectionLost(): Unit
+
 }

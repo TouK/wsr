@@ -2,7 +2,9 @@ package pl.touk.wsr.transport.tcp
 
 import java.net.InetSocketAddress
 
+import collection.immutable._
 import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Stash, Status}
+import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
 import akka.io._
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
@@ -17,8 +19,9 @@ class TcpWsrClientFactory(actorRefFactory: ActorRefFactory,
                           remote: InetSocketAddress) extends WsrClientFactory {
 
   override def connect(handler: WsrClientHandler): WsrClientSender = {
-    val connect = Connect(remote)
-    // TODO: pooling, supervision, notifications about connection lost
+    val options = Seq(KeepAlive(true))
+    val connect = Connect(remote, options = options)
+    // TODO: pooling
     val connectingActor = actorRefFactory.actorOf(Props(new ConnectingActor(handler, initialExtractor, connect)))
     new TcpWsrClientSender(connectingActor)
   }
@@ -40,23 +43,16 @@ class ConnectingActor(handler: WsrClientHandler,
 
   private var extractor = MessagesExtractor.empty(initialExtractor)
 
-  self ! connect
+  IO(Tcp) ! connect
 
   def receive = {
-    case connect: Connect =>
-      IO(Tcp) ! connect
-      context.become(waitingForConnection)
-    case other =>
-      stash()
-  }
-
-  val waitingForConnection: Receive = {
     case failed: CommandFailed =>
       throw new ConnectFailedException(failed.toString)
     case c: Connected =>
       val connection = sender()
       connection ! Register(self)
       unstashAll()
+      handler.onConnectionEstablished() // if will be available pooling, should be invoked only for first connection
       context.become(connected(connection))
     case other =>
       stash()
@@ -71,18 +67,12 @@ class ConnectingActor(handler: WsrClientHandler,
       val (messages, newExtractor) = extractor.extract(data)
       extractor = newExtractor
       messages.foreach(handler.onMessage)
-    case Close =>
-      connection ! Close
-      context.become(closingConnection)
     case closed: ConnectionClosed =>
       throw new UnexpectedCloseException(closed.toString)
   }
 
-  val closingConnection: Receive = {
-    case closed: ConnectionClosed =>
-      context.stop(self)
-    case failed: CommandFailed =>
-      throw new Exception(failed.toString)
+  override def postStop(): Unit = {
+    handler.onConnectionLost() // if will be available pooling, should be invoked only for last closed connection
   }
 
 }

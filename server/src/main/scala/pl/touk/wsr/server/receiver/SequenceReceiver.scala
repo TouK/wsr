@@ -95,5 +95,7 @@ private class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
       logger.error(s"Unknown client message type [$msg]")
   }
 
+  override def onConnectionLost(): Unit = {}
+
   private def handleReaderMessage(msg: WriterMessage): Unit = sequenceReceiver ! msg
 }

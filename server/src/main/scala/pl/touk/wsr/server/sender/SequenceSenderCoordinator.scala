@@ -104,6 +104,7 @@ private class SupplyingWsrServerHandler(coordinator: ActorRef) extends WsrServer
     case msg =>
       logger.error(s"Unknown client message type [$msg]")
   }
+  override def onConnectionLost(): Unit = {}
 
   private def handleReaderMessage(msg: ReaderMessage): Unit = coordinator ! msg
 }

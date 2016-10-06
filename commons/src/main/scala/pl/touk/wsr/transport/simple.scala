@@ -39,6 +39,7 @@ object simple {
     override def onMessage(message: ClientMessage): Unit = {
       targetActor ! message
     }
+    override def onConnectionLost(): Unit = {}
   }
 
 }
