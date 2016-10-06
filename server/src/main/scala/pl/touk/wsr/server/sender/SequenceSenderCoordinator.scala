@@ -36,6 +36,7 @@ class SequenceSenderCoordinator(serverFactory: WsrServerFactory, storage: ActorR
       .bind(new SupplyingWsrServerHandler(self))
       .andThen {
         case Success(sender) =>
+          logger.debug("Sequence sender coordinator has been bound")
           become(bounded(sender))
         case Failure(ex) =>
           logger.error("Cannot bind to server")
@@ -97,8 +98,11 @@ object SequenceSenderCoordinator {
 
 private class SupplyingWsrServerHandler(coordinator: ActorRef) extends WsrServerHandler with LazyLogging {
   override def onMessage(message: ClientMessage): Unit = message match {
-    case msg: ReaderMessage => handleReaderMessage(msg)
-    case _ => logger.error("Unknown client message type")
+    case msg: ReaderMessage =>
+      logger.debug(s"Reader message [$msg] has arrived")
+      handleReaderMessage(msg)
+    case msg =>
+      logger.error(s"Unknown client message type [$msg]")
   }
 
   private def handleReaderMessage(msg: ReaderMessage): Unit = coordinator ! msg

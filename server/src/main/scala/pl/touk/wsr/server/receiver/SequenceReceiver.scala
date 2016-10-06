@@ -32,6 +32,7 @@ class SequenceReceiver(serverFactory: WsrServerFactory, storage: ActorRef)
       .bind(new SupplyingSequenceReceiver(self))
       .andThen {
         case Success(sender) =>
+          logger.debug("Sequence receiver has been bound")
           storage ! RegisterFreeDataSpaceListener
           become(common(sender))
         case Failure(ex) =>
@@ -57,7 +58,6 @@ class SequenceReceiver(serverFactory: WsrServerFactory, storage: ActorRef)
   private def waitingForDataSpaceInfo(sender: WsrServerSender): Receive =
     common(sender) orElse dataRequest(sender) orElse {
       case Full =>
-        logger.info("Waiting for free space in storage")
         become(waitingForFreeDataSpace(sender))
     }
 
@@ -88,8 +88,11 @@ private class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
   extends WsrServerHandler with LazyLogging {
 
   override def onMessage(message: ClientMessage): Unit = message match {
-    case msg: WriterMessage => handleReaderMessage(msg)
-    case _ => logger.error("Unknown client message type")
+    case msg: WriterMessage =>
+      logger.debug(s"Writer message $msg has arrived")
+      handleReaderMessage(msg)
+    case msg =>
+      logger.error(s"Unknown client message type [$msg]")
   }
 
   private def handleReaderMessage(msg: WriterMessage): Unit = sequenceReceiver ! msg
