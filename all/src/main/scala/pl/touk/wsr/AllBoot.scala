@@ -20,6 +20,8 @@ import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 
 object AllBoot extends App with LazyLogging {
 
+  logger.info("WSR is starting ....")
+
   val system = ActorSystem("wsr")
   implicit val ex = system.dispatcher
 
@@ -63,7 +65,7 @@ object AllBoot extends App with LazyLogging {
       writerServerHandlerPromise.success(handler)
       writerServerSenderPromise.future.andThen {
         case _ =>
-          logger.info("Server has connected with writer...")
+          logger.info("Server has connected with writer")
       }
     }
   }
@@ -78,7 +80,7 @@ object AllBoot extends App with LazyLogging {
       readerServerHandlerPromise.success(handler)
       readerServerSenderPromise.future.andThen {
         case _ =>
-          logger.info("Server has connected with reader...")
+          logger.info("Server has connected with reader")
       }
     }
   }
@@ -93,7 +95,7 @@ object AllBoot extends App with LazyLogging {
 
     val writerClientFactory: WsrClientFactory = new WsrClientFactory {
       def connect(handler: WsrClientHandler): WsrClientSender = {
-        logger.info("Writer has connected with server...")
+        logger.info("Writer has connected with server")
         handler.onConnectionEstablished()
         writerServerSenderPromise.success(new WsrServerSender {
           def send(message: ServerMessage): Unit = {
@@ -116,7 +118,7 @@ object AllBoot extends App with LazyLogging {
 
     val readerClientFactory: WsrClientFactory = new WsrClientFactory {
       def connect(handler: WsrClientHandler): WsrClientSender = {
-        logger.info("Reader has connected with server...")
+        logger.info("Reader has connected with server")
         handler.onConnectionEstablished()
         readerServerSenderPromise.success(new WsrServerSender {
           def send(message: ServerMessage): Unit = {
@@ -136,5 +138,7 @@ object AllBoot extends App with LazyLogging {
         1000,
         readerClientFactory))
   }
+
+  logger.info("WSR has started!")
 
 }

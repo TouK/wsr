@@ -11,7 +11,7 @@ import pl.touk.wsr.transport.tcp.TcpWsrClientFactory
 
 object ReaderBoot extends App with LazyLogging {
 
-  logger.info("READER HAS STARTED ....")
+  logger.info("READER is starting ....")
 
   val system = ActorSystem("reader")
 
@@ -30,5 +30,7 @@ object ReaderBoot extends App with LazyLogging {
     SequencesManager.props(
       1000,
       clientFactory))
+
+  logger.info("READER has started!")
 
 }
