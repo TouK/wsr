@@ -135,7 +135,7 @@ object AllBoot extends App with LazyLogging {
 
     system.actorOf(
       SequencesManager.props(
-        4,
+        1000,
         readerClientFactory))
   }
 

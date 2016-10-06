@@ -6,15 +6,11 @@ import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
-import pl.touk.wsr.protocol.ServerMessage
 import pl.touk.wsr.server.receiver.SequenceReceiver
 import pl.touk.wsr.server.sender.SequenceSenderCoordinator
 import pl.touk.wsr.server.storage.{InMemoryStorageWithSerialization, StorageManager}
 import pl.touk.wsr.transport.tcp.TcpWsrServerFactory
 import pl.touk.wsr.transport.tcp.codec.ClientMessageCodec
-import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
-
-import scala.concurrent.{ExecutionContext, Future}
 
 object ServerBoot extends App with LazyLogging {
   logger.info("SERVER is starting ....")
