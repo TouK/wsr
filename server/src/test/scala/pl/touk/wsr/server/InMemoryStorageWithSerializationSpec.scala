@@ -58,6 +58,18 @@ class InMemoryStorageWithSerializationSpec
     await(storage.requestForFreeDataSpace) should be(NoFreeDataSpace)
     await(storage.deleteData(firstPack.get.id))
     await(storage.requestForFreeDataSpace) should be(FreeDataSpace(4, 50))
+    add(storage, 6, 1)
+    await(storage.requestForFreeDataSpace) should be(NoFreeDataSpace)
+    add(storage, 7, 2)
+    await(storage.requestForFreeDataSpace) should be(NoFreeDataSpace)
+    await(storage.getUnreservedDataPack) should be(None)
+//    add(storage, 9, 1)
+//    await(storage.requestForFreeDataSpace) should be(NoFreeDataSpace)
+//    val secondPack = await(storage.getUnreservedDataPack)
+//    secondPack.map(_.sequence) should be(Some(Seq(5, 6, 7, 8, 9)))
+//    await(storage.requestForFreeDataSpace) should be(NoFreeDataSpace)
+//    await(storage.deleteData(secondPack.get.id))
+//    await(storage.requestForFreeDataSpace) should be(FreeDataSpace(5, 55))
   }
 
   private def await[T](value: Future[T]): T = {
