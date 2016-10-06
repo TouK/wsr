@@ -8,12 +8,12 @@ import akka.io._
 import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 import pl.touk.wsr.transport._
 import pl.touk.wsr.transport.tcp.ConnectingActor._
-import pl.touk.wsr.transport.tcp.codec.{ClientMessageCodec, MessagesExtractor}
+import pl.touk.wsr.transport.tcp.codec.{ClientMessageCodec, MessagesExtractor, SingleMessageExtractor}
 
 import scala.language.postfixOps
 
 class TcpWsrClientFactory(actorRefFactory: ActorRefFactory,
-                          initialExtractor: MessagesExtractor[ServerMessage],
+                          initialExtractor: SingleMessageExtractor[ServerMessage],
                           remote: InetSocketAddress) extends WsrClientFactory {
 
   override def connect(handler: WsrClientHandler): WsrClientSender = {
@@ -32,11 +32,13 @@ class TcpWsrClientSender(connectingActor: ActorRef) extends WsrClientSender {
 }
 
 class ConnectingActor(handler: WsrClientHandler,
-                      var extractor: MessagesExtractor[ServerMessage],
+                      initialExtractor: SingleMessageExtractor[ServerMessage],
                       connect: Connect) extends Actor with Stash {
 
   import Tcp._
   import context.system
+
+  private var extractor = MessagesExtractor.empty(initialExtractor)
 
   self ! connect
 

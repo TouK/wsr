@@ -18,7 +18,7 @@ object WriterBoot extends App with LazyLogging {
 
   val clientFactory: WsrClientFactory = new TcpWsrClientFactory(
     system,
-    MessagesExtractor.empty(ServerMessageCodec.writerExtractor),
+    ServerMessageCodec.writerExtractor,
     new InetSocketAddress("localhost", 11234))
 
   implicit val metrics = new WriterMetrics

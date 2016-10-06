@@ -32,12 +32,12 @@ class TcpTransportSpec extends TestKit(ActorSystem("TcpTransportSpec")) with Fla
       }
     }
 
-    val serverFactory = new TcpWsrServerFactory(system, MessagesExtractor.empty(ClientMessageCodec.writerExtractor), address)
+    val serverFactory = new TcpWsrServerFactory(system, ClientMessageCodec.writerExtractor, address)
     serverSender = Await.result(serverFactory.bind(serverHandler), 5 seconds)
 
 
     val handler = new MockWsrClientHandler
-    val clientFactory = new TcpWsrClientFactory(system, MessagesExtractor.empty(ServerMessageCodec.writerExtractor), address)
+    val clientFactory = new TcpWsrClientFactory(system, ServerMessageCodec.writerExtractor, address)
     val clientSender = clientFactory.connect(handler)
 
     clientSender.send(Greeting)
