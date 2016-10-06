@@ -69,7 +69,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
       if (maxPacksDataSize <= dataPacks.length) NoFreeDataSpace
       else FreeDataSpace(
         (maxPacksDataSize - dataPacks.length) * dataPackSize,
-        if (unpackedData.nonEmpty) unpackedData.last else dataPacks.last.dataPack.sequence.last
+        if (unpackedData.nonEmpty) unpackedData.last else dataPacks.lastOption.flatMap(_.dataPack.sequence.lastOption).getOrElse(0)
       )
     }
   }

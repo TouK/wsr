@@ -68,6 +68,11 @@ lazy val server = project.in(file("server"))
   .settings(
     name := "wsr-sever",
     assemblyJarName in assembly := "wsr-sever.jar",
-    libraryDependencies ++= { Seq.empty[ModuleID] }
+    libraryDependencies ++= {
+      Seq(
+        "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
+        "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
+      )
+    }
   )
   .dependsOn(commons)
