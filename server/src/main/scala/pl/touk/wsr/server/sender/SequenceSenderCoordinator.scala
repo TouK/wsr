@@ -27,10 +27,7 @@ class SequenceSenderCoordinator(serverFactory: WsrServerFactory, storage: ActorR
     bind()
   }
 
-  override def postRestart(reason: Throwable): Unit = {
-    super.postRestart(reason)
-    bind()
-  }
+  override def postRestart(reason: Throwable): Unit = {}
 
   private def bind() = {
     serverFactory
