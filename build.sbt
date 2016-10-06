@@ -66,8 +66,8 @@ lazy val reader = project.in(file("reader"))
 lazy val server = project.in(file("server"))
   .settings(commonSettings)
   .settings(
-    name := "wsr-sever",
-    assemblyJarName in assembly := "wsr-sever.jar",
+    name := "wsr-server",
+    assemblyJarName in assembly := "wsr-server.jar",
     libraryDependencies ++= {
       Seq(
         "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
@@ -76,3 +76,12 @@ lazy val server = project.in(file("server"))
     }
   )
   .dependsOn(commons)
+
+lazy val all = project.in(file("all"))
+  .settings(commonSettings)
+  .settings(
+    name := "wsr-all",
+    assemblyJarName in assembly := "wsr-all.jar",
+    libraryDependencies ++= { Seq.empty[ModuleID] }
+  )
+  .dependsOn(writer, reader, server)

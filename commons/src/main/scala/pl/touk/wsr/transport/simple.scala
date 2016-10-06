@@ -6,7 +6,7 @@ object simple {
 
   class SimpleWsrClientFactory(targetActor: ActorRef) extends WsrClientFactory {
     override def connect(clientHandler: WsrClientHandler): SimpleWsrClientSender = {
-      clientHandler.onConnectionEstablished() // TODO: resolve cyclic dependency
+      clientHandler.onConnectionEstablished()
       val serverSender = new SimpleWsrServerSender(clientHandler)
       val serverHandler = new ActorForwardingWsrServerHandler(targetActor)
       new SimpleWsrClientSender(serverSender, serverHandler)
