@@ -111,10 +111,10 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
   }
 
   override def freeRequestedDataSpace: Future[Unit] = Future.successful {
-    synchronized {
-      nextOffset = nextOffset.map(_ - waitingFor)
-      waitingFor = 0
-    }
+//    synchronized {
+//      nextOffset = nextOffset.map(_ - waitingFor)
+//      waitingFor = 0
+//    }
   }
 
   private def save() = {
