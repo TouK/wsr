@@ -15,11 +15,9 @@ trait Storage {
   def hasFreeDataSpace: Future[DataSpace]
 }
 
-@SerialVersionUID(102L)
-trait DataPackId extends Serializable
+trait DataPackId
 
-@SerialVersionUID(101L)
-case class DataPack(id: DataPackId, sequence: Seq[Int]) extends Serializable
+case class DataPack(id: DataPackId, sequence: Seq[Int])
 
 sealed trait DataSpace
 

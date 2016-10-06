@@ -12,8 +12,7 @@ import scala.util.{Failure, Success, Try}
 class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int, dataPath: String)
   extends Storage with LazyLogging {
 
-  @SerialVersionUID(100L)
-  private case class UUIDDataPackId(uuid: UUID) extends DataPackId with Serializable
+  private case class UUIDDataPackId(uuid: UUID) extends DataPackId
 
   private object UUIDDataPackId {
     def apply(): UUIDDataPackId = UUIDDataPackId(UUID.randomUUID())
