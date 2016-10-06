@@ -1,7 +1,7 @@
 package pl.touk.wsr.transport.tcp.codec
 
 import akka.util.ByteStringBuilder
-import pl.touk.wsr.protocol.ServerMessage
+import pl.touk.wsr.protocol.{ClientMessage, ServerMessage}
 import pl.touk.wsr.protocol.srvrdr._
 import pl.touk.wsr.protocol.wrtsrv._
 
@@ -43,6 +43,23 @@ object ServerMessageCodec extends CodecCommons {
         (start, afterStart) <- str.readInt()
         (count, afterCount) <- afterStart.readInt()
       } yield (RequestForNumbers(start, count), this, afterCount)
+    }
+  }
+
+  val readerExtractor = WaitingForNextNumberInSeqExtractor
+
+  object WaitingForNextNumberInSeqExtractor extends SingleMessageExtractor[ServerMessage] {
+    override def extractMessage(str: EnrichedByteString): Option[(ServerMessage, SingleMessageExtractor[ServerMessage], EnrichedByteString)] = {
+      for {
+        (seqId, afterSeqId) <- str.readUuid()
+        (number, afterNumber) <- afterSeqId.readInt()
+      } yield {
+        val msg = if (number == -1)
+          EndOfSequence(seqId)
+        else
+          NextNumberInSequence(seqId, number)
+        (msg, this, afterNumber)
+      }
     }
   }
 
