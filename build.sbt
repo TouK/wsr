@@ -10,7 +10,8 @@ val commonSettings =
     scalacOptions := Seq(
       "-target:jvm-1.8", "-unchecked", "-deprecation", "-encoding", "utf8", "-Xcheckinit", "-Xfatal-warnings", "-feature"
     ),
-    parallelExecution in Test := false
+    parallelExecution in Test := false,
+    dockerRepository := Some("wsr")
   )
 
 val akkaV             = "2.4.11"
@@ -47,6 +48,8 @@ lazy val writer = project.in(file("writer"))
       )
     }
   )
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
   .dependsOn(commons)
 
 lazy val reader = project.in(file("reader"))
@@ -61,6 +64,8 @@ lazy val reader = project.in(file("reader"))
       )
     }
   )
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
   .dependsOn(commons)
 
 lazy val server = project.in(file("server"))
@@ -75,6 +80,8 @@ lazy val server = project.in(file("server"))
       )
     }
   )
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
   .dependsOn(commons)
 
 lazy val all = project.in(file("all"))
