@@ -1,5 +1,7 @@
 package pl.touk.wsr.server.utils
 
+import scala.collection.immutable.Seq
+
 object ScalaUtils {
 
   implicit class SeqOps[T](seq: Seq[T]) {
@@ -19,7 +21,5 @@ object ScalaUtils {
     def findAndUpdate(predicate: T => Boolean, update: T => T): Seq[T] = {
       findAndUpdateWithReturningOld(predicate, update)._1
     }
-
   }
-
 }

@@ -8,6 +8,7 @@ import pl.touk.wsr.server.utils.ScalaUtils._
 
 import scala.concurrent.Future
 import scala.util.Try
+import scala.collection.immutable.Seq
 
 class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int, dataPath: String)
   extends Storage with LazyLogging {
