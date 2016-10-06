@@ -27,7 +27,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
   private var dataPacks: Seq[DataPackWithReservation] = load().map(_.toSeq).getOrElse(Seq.empty[DataPackWithReservation])
   private var unpackedData: Seq[Int] = Seq.empty[Int]
   private var nextOffset = dataPacks.lastOption.flatMap(_.dataPack.sequence.lastOption).getOrElse(0)
-  private var requestedDataSpace = FreeDataSpace(0, 0)
+  private var waitingFor = 0
 
   override def addData(number: Int): Future[Unit] = Future.successful {
     synchronized {
@@ -37,10 +37,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
         val dataPack = DataPackWithReservation(DataPack(UUIDDataPackId(), newUnpackedData))
         dataPacks = dataPacks :+ dataPack
         unpackedData = List.empty[Int]
-        requestedDataSpace = FreeDataSpace(
-          size = requestedDataSpace.size - dataPackSize,
-          offset = requestedDataSpace.offset + dataPackSize
-        )
+        waitingFor = waitingFor - dataPackSize
         logStorageState("after adding")
       } else {
         unpackedData = newUnpackedData
@@ -75,18 +72,13 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
 
   override def requestForFreeDataSpace: Future[DataSpace] = Future.successful {
     synchronized {
-      val maxSize = maxPacksDataSize * dataPackSize
-      val freeSize = maxSize - dataPacks.size * dataPackSize
-
       logStorageState("Before request")
       val result =
         if (maxPacksDataSize <= dataPacks.length) NoFreeDataSpace
         else {
           val freeSpaceSize = (maxPacksDataSize - dataPacks.length) * dataPackSize
-          val offset = if (unpackedData.nonEmpty) unpackedData.last else nextOffset + requestedDataSpace.size
           if (freeSpaceSize + dataPacks.length * dataPackSize <= maxPacksDataSize * dataPackSize) {
-            val freeDataSpace = FreeDataSpace(requestedDataSpace.size + freeSpaceSize, requestedDataSpace.size + offset)
-            requestedDataSpace = FreeDataSpace(requestedDataSpace.size + freeDataSpace.size, requestedDataSpace.offset)
+            val freeDataSpace = FreeDataSpace(freeSpaceSize - waitingFor, nextOffset)
             nextOffset = freeDataSpace.offset + freeDataSpace.size
             freeDataSpace
           } else {
@@ -112,7 +104,8 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
 
   override def freeRequestedDataSpace: Future[Unit] = Future.successful {
     synchronized {
-      requestedDataSpace = FreeDataSpace(0, 0)
+      // todo: maybe: nextOffset = nextOffset - waitingFor
+      waitingFor = 0
     }
   }
 
