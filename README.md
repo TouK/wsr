@@ -1,2 +1,5 @@
-## BUILDING PROJECT
-    $ sbt assembly
+# RUN
+```
+sbt docker:publishLocal
+docker-compose up
+```
