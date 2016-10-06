@@ -1,12 +1,19 @@
 package pl.touk.wsr.server.storage
 
+import java.io.{FileInputStream, FileOutputStream, ObjectInputStream, ObjectOutputStream}
 import java.util.UUID
+
+import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.server.utils.ScalaUtils._
+
 import scala.concurrent.Future
+import scala.util.Try
 
-class InMemoryStorage(dataPackSize: Int, maxPacksDataSize: Int) extends Storage {
+class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int, dataPath: String)
+  extends Storage with LazyLogging {
 
-  private case class UUIDDataPackId(uuid: UUID) extends DataPackId
+  @SerialVersionUID(100L)
+  private case class UUIDDataPackId(uuid: UUID) extends DataPackId with Serializable
 
   private case class DataPackWithReservation(dataPack: DataPack, reserved: Boolean)
 
@@ -14,7 +21,7 @@ class InMemoryStorage(dataPackSize: Int, maxPacksDataSize: Int) extends Storage 
     def apply(data: DataPack): DataPackWithReservation = DataPackWithReservation(data, reserved = false)
   }
 
-  private var dataPacks = Seq.empty[DataPackWithReservation]
+  private var dataPacks = load().map(_.map(DataPackWithReservation(_))).getOrElse(Seq.empty[DataPackWithReservation])
   private var unpackedData: Seq[Int] = Seq.empty[Int]
 
   override def addData(number: Int): Future[Unit] = Future.successful {
@@ -28,12 +35,14 @@ class InMemoryStorage(dataPackSize: Int, maxPacksDataSize: Int) extends Storage 
       } else {
         unpackedData = newUnpackedData
       }
+      save()
     }
   }
 
   override def deleteData(id: DataPackId): Future[Unit] = Future.successful {
     synchronized {
       dataPacks = dataPacks.filterNot(_.dataPack.id == id)
+      save()
     }
   }
 
@@ -64,4 +73,18 @@ class InMemoryStorage(dataPackSize: Int, maxPacksDataSize: Int) extends Storage 
     }
   }
 
+  private def save() = Try {
+    val oos = new ObjectOutputStream(new FileOutputStream(dataPath))
+    oos.writeObject(dataPacks.map(_.dataPack))
+    oos.close()
+  } getOrElse {
+    logger.error("Serialization fails!")
+  }
+
+  private def load() = Try {
+    val ois = new ObjectInputStream(new FileInputStream(dataPath))
+    val loadedDataPacks = ois.readObject.asInstanceOf[Seq[DataPack]]
+    ois.close()
+    loadedDataPacks
+  }
 }

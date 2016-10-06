@@ -17,7 +17,8 @@ trait Storage {
 
 trait DataPackId
 
-case class DataPack(id: DataPackId, sequence: Seq[Int])
+@SerialVersionUID(101L)
+case class DataPack(id: DataPackId, sequence: Seq[Int]) extends Serializable
 
 sealed trait DataSpace
 
