@@ -84,7 +84,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int,
             val freeDataSpace = FreeDataSpace(freeSpaceSize - waitingFor, nextOffset.getOrElse(dataPacks.size * dataPackSize))
             if(freeDataSpace.size != 0) {
               nextOffset = Some(freeDataSpace.offset + freeDataSpace.size)
-              waitingFor = freeDataSpace.size
+              waitingFor = waitingFor + freeDataSpace.size
               freeDataSpace
             } else {
               NoFreeDataSpace
