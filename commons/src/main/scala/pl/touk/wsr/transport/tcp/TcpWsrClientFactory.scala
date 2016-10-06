@@ -3,7 +3,7 @@ package pl.touk.wsr.transport.tcp
 import java.net.InetSocketAddress
 
 import collection.immutable._
-import akka.actor.{Actor, ActorRef, ActorRefFactory, Props, Stash, Status}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props, Stash, Status}
 import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
 import akka.io._
@@ -36,7 +36,7 @@ class TcpWsrClientSender(connectingActor: ActorRef) extends WsrClientSender {
 
 class ConnectingActor(handler: WsrClientHandler,
                       initialExtractor: SingleMessageExtractor[ServerMessage],
-                      connect: Connect) extends Actor with Stash {
+                      connect: Connect) extends Actor with Stash with ActorLogging {
 
   import Tcp._
   import context.system
@@ -44,6 +44,8 @@ class ConnectingActor(handler: WsrClientHandler,
   private var extractor = MessagesExtractor.empty(initialExtractor)
 
   IO(Tcp) ! connect
+
+  log.info("Connecting...")
 
   def receive = {
     case failed: CommandFailed =>
@@ -58,9 +60,22 @@ class ConnectingActor(handler: WsrClientHandler,
       stash()
   }
 
-  def connected(connection: ActorRef): Receive = {
+  def connected(connection: ActorRef): Receive = ({
     case msgToSend: ClientMessage =>
-      connection ! Write(ClientMessageCodec.encoder.encode(msgToSend))
+      connection ! Write(ClientMessageCodec.encoder.encode(msgToSend), Ack)
+      context.become(waitingForAck, discardOld = false)
+  }: Receive) orElse handleCommonEvents
+
+  private val waitingForAck: Receive = ({
+    case msgToSend: ClientMessage =>
+      stash()
+    // Waiting for acks could be dramatically slow, better approach would be to use backpressure
+    case Ack =>
+      unstashAll()
+      context.unbecome()
+  }: Receive) orElse handleCommonEvents
+
+  private lazy val handleCommonEvents: Receive = {
     case failed: CommandFailed =>
       throw new WriteFiledException(failed.toString)
     case Received(data) =>
@@ -78,6 +93,8 @@ class ConnectingActor(handler: WsrClientHandler,
 }
 
 object ConnectingActor {
+
+  case object Ack extends Event
 
   class ConnectFailedException(msg: String) extends Exception(msg)
 

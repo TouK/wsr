@@ -1,0 +1,21 @@
+version: '2'
+
+services:
+  writer:
+    image: wsr/wsr-writer:1.0
+    depends_on:
+      - server
+    ports:
+      - 9991:9991
+  
+  server:
+    image: wsr/wsr-server:1.0
+    ports:
+      - 9992:9992
+  
+  reader:
+    image: wsr/wsr-reader:1.0
+    depends_on:
+      - server
+    ports:
+      - 9993:9993

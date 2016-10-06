@@ -10,7 +10,8 @@ val commonSettings =
     scalacOptions := Seq(
       "-target:jvm-1.8", "-unchecked", "-deprecation", "-encoding", "utf8", "-Xcheckinit", "-Xfatal-warnings", "-feature"
     ),
-    parallelExecution in Test := false
+    parallelExecution in Test := false,
+    dockerRepository := Some("wsr")
   )
 
 val akkaV             = "2.4.11"
@@ -37,6 +38,8 @@ lazy val commons = project.in(file("commons"))
 
 lazy val writer = project.in(file("writer"))
   .settings(commonSettings)
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "wsr-writer",
     assemblyJarName in assembly := "wsr-writer.jar",
@@ -45,12 +48,15 @@ lazy val writer = project.in(file("writer"))
         "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
-    }
+    },
+    dockerEntrypoint := Seq("bin/wsr-writer", "-jvm-debug", "9991")
   )
   .dependsOn(commons)
 
 lazy val reader = project.in(file("reader"))
   .settings(commonSettings)
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "wsr-reader",
     assemblyJarName in assembly := "wsr-reader.jar",
@@ -59,12 +65,15 @@ lazy val reader = project.in(file("reader"))
         "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
-    }
+    },
+    dockerEntrypoint := Seq("bin/wsr-reader", "-jvm-debug", "9993")
   )
   .dependsOn(commons)
 
 lazy val server = project.in(file("server"))
   .settings(commonSettings)
+  .enablePlugins(DockerPlugin)
+  .enablePlugins(JavaAppPackaging)
   .settings(
     name := "wsr-server",
     assemblyJarName in assembly := "wsr-server.jar",
@@ -73,7 +82,8 @@ lazy val server = project.in(file("server"))
         "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
-    }
+    },
+    dockerEntrypoint := Seq("bin/wsr-server", "-jvm-debug", "9992")
   )
   .dependsOn(commons)
 
