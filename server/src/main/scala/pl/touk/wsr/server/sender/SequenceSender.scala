@@ -34,6 +34,11 @@ class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorR
       sendNextNumberFromSequence()
   }
 
+  private def waitingForEnd: Receive = {
+    case Next =>
+      context.stop(self)
+  }
+
   private def dataAvailable: Receive = {
     case Next if unsentSequence.forall(_.isEmpty) => finishSending()
     case Next => sendNextNumberFromSequence()
@@ -42,7 +47,7 @@ class SequenceSender(seqId: UUID, serverSender: WsrServerSender, storage: ActorR
   private def finishSending(): Unit = {
     serverSender.send(EndOfSequence(seqId))
     sequencePackId.foreach(id => storage ! DataProcessed(id))
-    context.stop(self)
+    become(waitingForEnd)
   }
 
   private def sendNextNumberFromSequence(): Unit = {
