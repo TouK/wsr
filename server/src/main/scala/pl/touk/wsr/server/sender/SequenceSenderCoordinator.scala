@@ -8,6 +8,7 @@ import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, ReaderMessage, RequestForSequence}
 import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.sender.SequenceSender.Next
+import pl.touk.wsr.server.sender.SequenceSenderCoordinator.ConnectionLost
 import pl.touk.wsr.server.utils.BiMap
 import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 
@@ -47,9 +48,16 @@ class SequenceSenderCoordinator(serverFactory: WsrServerFactory, storage: ActorR
   override def receive: Receive = Actor.emptyBehavior
 
   private def bounded(sender: WsrServerSender): Receive = {
+    case ConnectionLost => handleConnectionLost()
     case RequestForSequence(seqId) => handleRequestForSequence(seqId, sender)
     case Ack(seqId) => handleAck(seqId)
     case Terminated(seqSender) => handleSequenceSenderTermination(seqSender)
+  }
+
+  private def handleConnectionLost(): Unit = {
+    val localSenders = sequenceSenders
+    sequenceSenders = BiMap.empty
+    localSenders.keys2.foreach(context.stop)
   }
 
   private def handleRequestForSequence(seqId: UUID, sender: WsrServerSender): Unit = {
@@ -94,6 +102,8 @@ object SequenceSenderCoordinator {
   def props(serverFactory: WsrServerFactory, storage: ActorRef)
            (implicit metrics: ServerMetricsReporter): Props =
     Props(new SequenceSenderCoordinator(serverFactory, storage))
+
+  case object ConnectionLost
 }
 
 private class SupplyingWsrServerHandler(coordinator: ActorRef) extends WsrServerHandler with LazyLogging {
@@ -104,7 +114,8 @@ private class SupplyingWsrServerHandler(coordinator: ActorRef) extends WsrServer
     case msg =>
       logger.error(s"Unknown client message type [$msg]")
   }
-  override def onConnectionLost(): Unit = {}
+
+  override def onConnectionLost(): Unit = coordinator ! ConnectionLost
 
   private def handleReaderMessage(msg: ReaderMessage): Unit = coordinator ! msg
 }

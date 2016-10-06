@@ -14,6 +14,10 @@ trait BiMap[T, S] {
   def getByKey1(key: T): Option[S]
 
   def getByKey2(key: S): Option[T]
+
+  def keys1: Iterable[T]
+
+  def keys2: Iterable[S]
 }
 
 object BiMap {
@@ -59,4 +63,8 @@ private class BiMapImpl[T, S](mapByKey1: Map[T, S] = Map.empty[T, S])
   override def getByKey1(key: T): Option[S] = mapByKey1.get(key)
 
   override def getByKey2(key: S): Option[T] = mapByKey2.get(key)
+
+  override def keys1: Iterable[T] = mapByKey1.keys
+
+  override def keys2: Iterable[S] = mapByKey2.keys
 }
