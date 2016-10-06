@@ -8,11 +8,11 @@ import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
 import pl.touk.wsr.transport.WsrClientFactory
 import pl.touk.wsr.transport.tcp.TcpWsrClientFactory
-import pl.touk.wsr.transport.tcp.codec.{MessagesExtractor, ServerMessageCodec}
+import pl.touk.wsr.transport.tcp.codec.ServerMessageCodec
 
 object WriterBoot extends App with LazyLogging {
 
-  logger.info("WRITER HAS STARTED ....")
+  logger.info("WRITER is starting ....")
 
   val system = ActorSystem("writer")
 
@@ -28,5 +28,7 @@ object WriterBoot extends App with LazyLogging {
   mbs.registerMBean(metrics, mBeanName)
 
   val writer = system.actorOf(Writer.props(clientFactory))
+
+  logger.info("WRITER has started!")
 
 }

@@ -47,5 +47,5 @@ object ServerBoot extends App with LazyLogging {
   val sequenceReceiver = system.actorOf(SequenceReceiver.props(writerSideFactory, storageManager), "sequence-receiver")
   val sequencesSenderCoordinator = system.actorOf(SequenceSenderCoordinator.props(readerSideFactory, storageManager), "sequence-sender-coordinator")
 
-  logger.info("Server has started!")
+  logger.info("SERVER has started!")
 }

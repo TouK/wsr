@@ -32,7 +32,7 @@ object ClientMessageCodec extends CodecCommons {
         builder.putInt(0)
       case Ack(seqId) =>
         encodeUuid(builder, seqId)
-        builder.putInt(1) // TODO: whithout this server can't recognize if got RequestForSequence or Ack without additional knowledge of msg sent from his site
+        builder.putInt(1) // TODO: whithout this server should have knowledge about closed sequences to recognize if got RequestForSequence or Ack
     }
   }
 
