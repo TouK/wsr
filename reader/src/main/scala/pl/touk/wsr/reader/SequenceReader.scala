@@ -43,9 +43,15 @@ private class SequenceReader(seqId: UUID,
   def receiveNext(previous: Int): Receive = receiveCommon orElse {
     case NextNumberInSequence(_, number) =>
       logger.debug(s"Sequence $seqId: received value $number")
-      if (number != previous + 1) {
+      if (number == previous) {
         logger.error(s"Sequence $seqId: out-of-order value $number after value $previous")
-        metrics.reportError()
+        metrics.reportOutOfOrderDuplicateError()
+      } else if (number > previous + 1) {
+        logger.error(s"Sequence $seqId: out-of-order value $number after value $previous")
+        metrics.reportOutOfOrderSkipError()
+      } else if (number < previous) {
+        logger.error(s"Sequence $seqId: out-of-order value $number after value $previous")
+        metrics.reportOutOfOrderOldError()
       }
       client.send(Ack(seqId))
       become(receiveNext(number))
