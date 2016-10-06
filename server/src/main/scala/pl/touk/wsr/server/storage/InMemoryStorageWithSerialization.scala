@@ -26,6 +26,7 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
 
   private var dataPacks: Seq[DataPackWithReservation] = load().map(_.toSeq).getOrElse(Seq.empty[DataPackWithReservation])
   private var unpackedData: Seq[Int] = Seq.empty[Int]
+  private var nextOffset = dataPacks.lastOption.flatMap(_.dataPack.sequence.lastOption).getOrElse(0)
   private var requestedDataSpace = FreeDataSpace(0, 0)
 
   override def addData(number: Int): Future[Unit] = Future.successful {
@@ -36,13 +37,13 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
         val dataPack = DataPackWithReservation(DataPack(UUIDDataPackId(), newUnpackedData))
         dataPacks = dataPacks :+ dataPack
         unpackedData = List.empty[Int]
-        logStorageState("after adding")
-      } else {
-        unpackedData = newUnpackedData
         requestedDataSpace = FreeDataSpace(
           size = requestedDataSpace.size - dataPackSize,
           offset = requestedDataSpace.offset + dataPackSize
         )
+        logStorageState("after adding")
+      } else {
+        unpackedData = newUnpackedData
       }
       save()
     }
@@ -82,10 +83,11 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
         if (maxPacksDataSize <= dataPacks.length) NoFreeDataSpace
         else {
           val freeSpaceSize = (maxPacksDataSize - dataPacks.length) * dataPackSize
-          val offset = if (unpackedData.nonEmpty) unpackedData.last else requestedDataSpace.offset + requestedDataSpace.size
+          val offset = if (unpackedData.nonEmpty) unpackedData.last else nextOffset + requestedDataSpace.size
           if (freeSpaceSize + dataPacks.length * dataPackSize <= maxPacksDataSize * dataPackSize) {
             val freeDataSpace = FreeDataSpace(requestedDataSpace.size + freeSpaceSize, requestedDataSpace.size + offset)
             requestedDataSpace = FreeDataSpace(requestedDataSpace.size + freeDataSpace.size, requestedDataSpace.offset)
+            nextOffset = freeDataSpace.offset + freeDataSpace.size
             freeDataSpace
           } else {
             NoFreeDataSpace
@@ -103,7 +105,6 @@ class InMemoryStorageWithSerialization(dataPackSize: Int, maxPacksDataSize: Int,
         |--------- $info
         | max-size:  $maxSize
         | free-size: ${maxSize - dataPacks.size * dataPackSize}
-        | requested: (offset: ${requestedDataSpace.offset}, size: ${requestedDataSpace.size})
         |----------------------------
         |""".stripMargin
     )
