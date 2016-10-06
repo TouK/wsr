@@ -85,7 +85,7 @@ object AllBoot extends App with LazyLogging {
     }
   }
 
-  val storage = new InMemoryStorageWithSerialization(10, 20, "/tmp/wsr")
+  val storage = new InMemoryStorageWithSerialization(10, 2000, "/tmp/wsr", serializable = false)
   val storageManager = system.actorOf(StorageManager.props(storage), "storage-manager")
   val sequenceReceiver = system.actorOf(SequenceReceiver.props(writerSideFactory, storageManager), "sequence-receiver")
   val sequencesSenderCoordinator = system.actorOf(SequenceSenderCoordinator.props(readerSideFactory, storageManager), "sequence-sender-coordinator")
@@ -135,7 +135,7 @@ object AllBoot extends App with LazyLogging {
 
     system.actorOf(
       SequencesManager.props(
-        10,
+        1000,
         readerClientFactory))
   }
 

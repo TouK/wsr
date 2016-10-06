@@ -23,8 +23,6 @@ class SequenceReceiver(serverFactory: WsrServerFactory, storage: ActorRef)
   }
 
   override def postRestart(reason: Throwable): Unit = {
-    super.postRestart(reason)
-    bind()
   }
 
   private def bind() = {
