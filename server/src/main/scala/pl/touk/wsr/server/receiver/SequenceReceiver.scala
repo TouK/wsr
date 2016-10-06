@@ -7,59 +7,84 @@ import pl.touk.wsr.protocol.wrtsrv.{Greeting, NextNumber, RequestForNumbers, Wri
 import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.receiver.SequenceReceiver.{Free, Full}
 import pl.touk.wsr.server.storage.StorageManager._
-import pl.touk.wsr.transport.{WsrServerHandler, WsrServerSender}
+import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 
-class SequenceReceiver(serverSender: WsrServerSender, storage: ActorRef)
+import scala.util.{Failure, Success}
+
+class SequenceReceiver(serverFactory: WsrServerFactory, storage: ActorRef)
                       (implicit metrics: ServerMetricsReporter)
   extends Actor with LazyLogging {
 
   import context._
 
   override def preStart(): Unit = {
-    storage ! RegisterFreeDataSpaceListener
     super.preStart()
+    bind()
   }
 
-  override def receive: Receive = common
+  override def postRestart(reason: Throwable): Unit = {
+    super.postRestart(reason)
+    bind()
+  }
 
-  private def common: Receive = {
+  private def bind() = {
+    serverFactory
+      .bind(new SupplyingSequenceReceiver(self))
+      .andThen {
+        case Success(sender) =>
+          storage ! RegisterFreeDataSpaceListener
+          become(common(sender))
+        case Failure(ex) =>
+          logger.error("Cannot bind to server")
+          throw new Exception("Cannot bind exception")
+      }
+  }
+
+  override def receive: Receive = Actor.emptyBehavior
+
+  private def common(sender: WsrServerSender): Receive = {
     case Greeting =>
       storage ! HasFreeDataSpace
-      become(waitingForDataSpaceInfo)
+      become(waitingForDataSpaceInfo(sender))
   }
 
-  private def dataRequest: Receive = {
+  private def dataRequest(sender: WsrServerSender): Receive = {
     case Free(offset, size) =>
-      serverSender.send(RequestForNumbers(offset, size))
-      become(waitingForNumbers)
+      sender.send(RequestForNumbers(offset, size))
+      become(waitingForNumbers(sender))
   }
 
-  private def waitingForDataSpaceInfo: Receive = common orElse dataRequest orElse {
-    case Full =>
-      logger.info("Waiting for free space in storage")
-      become(waitingForFreeDataSpace)
-  }
+  private def waitingForDataSpaceInfo(sender: WsrServerSender): Receive =
+    common(sender) orElse dataRequest(sender) orElse {
+      case Full =>
+        logger.info("Waiting for free space in storage")
+        become(waitingForFreeDataSpace(sender))
+    }
 
-  private def waitingForNumbers: Receive = common orElse dataRequest orElse {
-    case NextNumber(number) =>
-      storage ! Store(number)
-      metrics.reportNumberReceived()
-  }
+  private def waitingForNumbers(sender: WsrServerSender): Receive =
+    common(sender) orElse dataRequest(sender) orElse {
+      case NextNumber(number) =>
+        storage ! StoreData(number)
+        metrics.reportNumberReceived()
+    }
 
-  private def waitingForFreeDataSpace: Receive = common orElse dataRequest
+  private def waitingForFreeDataSpace(sender: WsrServerSender): Receive =
+    common(sender) orElse dataRequest(sender)
 
 }
 
 object SequenceReceiver {
-  def props(serverSender: WsrServerSender, storage: ActorRef)
+  def props(serverFactory: WsrServerFactory, storage: ActorRef)
            (implicit metrics: ServerMetricsReporter): Props =
-    Props(new SequenceReceiver(serverSender, storage))
+    Props(new SequenceReceiver(serverFactory, storage))
 
   case class Free(offset: Int, size: Int)
+
   case object Full
+
 }
 
-class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
+private class SupplyingSequenceReceiver(sequenceReceiver: ActorRef)
   extends WsrServerHandler with LazyLogging {
 
   override def onMessage(message: ClientMessage): Unit = message match {

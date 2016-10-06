@@ -8,26 +8,62 @@ import pl.touk.wsr.protocol.ClientMessage
 import pl.touk.wsr.protocol.srvrdr.{Ack, ReaderMessage, RequestForSequence}
 import pl.touk.wsr.server.ServerMetricsReporter
 import pl.touk.wsr.server.sender.SequenceSender.Next
-import pl.touk.wsr.transport.{WsrServerHandler, WsrServerSender}
+import pl.touk.wsr.server.utils.BiMap
+import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 
-class SequenceSenderCoordinator(sender: WsrServerSender, storage: ActorRef)
+import scala.util.{Failure, Success}
+
+class SequenceSenderCoordinator(serverFactory: WsrServerFactory, storage: ActorRef)
                                (implicit metrics: ServerMetricsReporter)
   extends Actor with LazyLogging {
 
-  private var sequenceSenders = Map.empty[UUID, ActorRef]
+  private var sequenceSenders = BiMap.empty[UUID, ActorRef]
 
-  override def receive: Receive = {
-    case RequestForSequence(seqId) => handleRequestForSequence(seqId)
+  import context._
+
+  override def preStart(): Unit = {
+    super.preStart()
+    bind()
+  }
+
+  override def postRestart(reason: Throwable): Unit = {
+    super.postRestart(reason)
+    bind()
+  }
+
+  private def bind() = {
+    serverFactory
+      .bind(new SupplyingWsrServerHandler(self))
+      .andThen {
+        case Success(sender) =>
+          become(bounded(sender))
+        case Failure(ex) =>
+          logger.error("Cannot bind to server")
+          throw new Exception("Cannot bind exception")
+      }
+  }
+
+  override def receive: Receive = Actor.emptyBehavior
+
+  private def bounded(sender: WsrServerSender): Receive = {
+    case RequestForSequence(seqId) => handleRequestForSequence(seqId, sender)
     case Ack(seqId) => handleAck(seqId)
     case Terminated(seqSender) => handleSequenceSenderTermination(seqSender)
   }
 
-  private def handleRequestForSequence(seqId: UUID): Unit = {
-    sequenceSenders = sequenceSenders + createSequenceSender(seqId)
+  private def handleRequestForSequence(seqId: UUID, sender: WsrServerSender): Unit = {
+    val newSequenceSenderWithId = createSequenceSender(seqId, sender)
+    sequenceSenders + newSequenceSenderWithId match {
+      case (newSequenceSenders, Some(_)) =>
+        sequenceSenders = newSequenceSenders
+      case (_, None) =>
+        context.stop(newSequenceSenderWithId._2)
+        logger.error(s"Cannot add sequence sender to collection; seqId = [${seqId.toString}]")
+    }
   }
 
   private def handleAck(seqId: UUID): Unit = {
-    sequenceSenders.get(seqId) match {
+    sequenceSenders.getByKey1(seqId) match {
       case Some(seqSender) =>
         seqSender ! Next
       case None =>
@@ -37,16 +73,16 @@ class SequenceSenderCoordinator(sender: WsrServerSender, storage: ActorRef)
   }
 
   private def handleSequenceSenderTermination(seqSender: ActorRef): Unit = {
-    sequenceSenders.find { case (_, ref) => ref == seqSender } match {
-      case Some((seqId, _)) =>
-        sequenceSenders = sequenceSenders - seqId
+    sequenceSenders.getByKey2(seqSender) match {
+      case Some(seqId) =>
+        sequenceSenders = sequenceSenders.removeByKey1(seqId)._1
       case None =>
-        logger.error("There is no Sequence sender in map!")
+        logger.error("There is no Sequence sender in collection!")
         metrics.reportError()
     }
   }
 
-  private def createSequenceSender(seqId: UUID): (UUID, ActorRef) = {
+  private def createSequenceSender(seqId: UUID, sender: WsrServerSender): (UUID, ActorRef) = {
     val sequenceSender = context.actorOf(SequenceSender.prop(seqId, sender, storage))
     context.watch(sequenceSender)
     (seqId, sequenceSender)
@@ -54,12 +90,12 @@ class SequenceSenderCoordinator(sender: WsrServerSender, storage: ActorRef)
 }
 
 object SequenceSenderCoordinator {
-  def props(sender: WsrServerSender, storage: ActorRef)
+  def props(serverFactory: WsrServerFactory, storage: ActorRef)
            (implicit metrics: ServerMetricsReporter): Props =
-    Props(new SequenceSenderCoordinator(sender, storage))
+    Props(new SequenceSenderCoordinator(serverFactory, storage))
 }
 
-class SupplyingWsrServerHandler(coordinator: ActorRef) extends WsrServerHandler with LazyLogging {
+private class SupplyingWsrServerHandler(coordinator: ActorRef) extends WsrServerHandler with LazyLogging {
   override def onMessage(message: ClientMessage): Unit = message match {
     case msg: ReaderMessage => handleReaderMessage(msg)
     case _ => logger.error("Unknown client message type")

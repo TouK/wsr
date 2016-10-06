@@ -5,8 +5,9 @@ import javax.management.ObjectName
 
 import akka.actor.ActorSystem
 import com.typesafe.scalalogging.LazyLogging
-import pl.touk.wsr.server.receiver.{SequenceReceiver, SupplyingSequenceReceiver}
-import pl.touk.wsr.server.sender.{SequenceSenderCoordinator, SupplyingWsrServerHandler}
+import pl.touk.wsr.protocol.ServerMessage
+import pl.touk.wsr.server.receiver.SequenceReceiver
+import pl.touk.wsr.server.sender.SequenceSenderCoordinator
 import pl.touk.wsr.server.storage.{InMemoryStorage, StorageManager}
 import pl.touk.wsr.transport.{WsrServerFactory, WsrServerHandler, WsrServerSender}
 
@@ -20,11 +21,19 @@ object ServerBoot extends App with LazyLogging {
 
   val writerSideFactory = new WsrServerFactory {
     override def bind(handler: WsrServerHandler)
-                     (implicit ec: ExecutionContext): Future[WsrServerSender] = Future.successful(null)
+                     (implicit ec: ExecutionContext): Future[WsrServerSender] = Future.successful(
+      new WsrServerSender {
+        override def send(message: ServerMessage): Unit = {}
+      }
+    )
   }
   val readerSideFactory = new WsrServerFactory {
     override def bind(handler: WsrServerHandler)
-                     (implicit ec: ExecutionContext): Future[WsrServerSender] = Future.successful(null)
+                     (implicit ec: ExecutionContext): Future[WsrServerSender] = Future.successful(
+      new WsrServerSender {
+        override def send(message: ServerMessage): Unit = {}
+      }
+    )
   }
 
   implicit val metrics = new ServerMetrics
@@ -34,14 +43,8 @@ object ServerBoot extends App with LazyLogging {
   mbs.registerMBean(metrics, mBeanName)
 
   val storageManager = system.actorOf(StorageManager.props(new InMemoryStorage(10, 2000)), "storage-manager")
-  writerSideFactory.bind {
-    val sequenceReceiver = system.actorOf(SequenceReceiver.props(null, storageManager), "sequence-receiver")
-    new SupplyingSequenceReceiver(sequenceReceiver)
-  }
-  readerSideFactory.bind {
-    val coordinator = system.actorOf(SequenceSenderCoordinator.props(null, storageManager), "sequence-sender-coordinator")
-    new SupplyingWsrServerHandler(coordinator)
-  }
+  val sequenceReceiver = system.actorOf(SequenceReceiver.props(writerSideFactory, storageManager), "sequence-receiver")
+  val sequencesSenderCoordinator = system.actorOf(SequenceSenderCoordinator.props(readerSideFactory, storageManager), "sequence-sender-coordinator")
 
   logger.info("Server has started!")
 }
