@@ -48,7 +48,7 @@ class ServerSpec
     implicit val metrics = new ServerMetrics
     implicit val ec = system.dispatcher
 
-    val storage = new InMemoryStorageWithSerialization(3, 5, "/tmp/wsr")
+    val storage = new InMemoryStorageWithSerialization(3, 5, "not_used", false)
     val storageManager = system.actorOf(StorageManager.props(storage))
     system.actorOf(SequenceReceiver.props(writerSideFactory, storageManager))
     system.actorOf(SequenceSenderCoordinator.props(readerSideFactory, storageManager))
@@ -56,6 +56,7 @@ class ServerSpec
     val readerHandler = readerHandlerPromise.future
     val writerHandler = writerHandlerPromise.future
 
+    Thread.sleep(1000)
     val timeout = Duration(10, TimeUnit.SECONDS)
     (Await.result(writerHandler, timeout), Await.result(readerHandler, timeout))
   }

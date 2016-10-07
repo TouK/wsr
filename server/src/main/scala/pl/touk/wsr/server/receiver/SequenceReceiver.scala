@@ -32,9 +32,9 @@ class SequenceReceiver(serverFactory: WsrServerFactory, storage: ActorRef)
           logger.debug("Sequence receiver has been bound")
           storage ! RegisterFreeDataSpaceListener
           become(common(sender))
-        case Failure(ex) =>
-          logger.error("Cannot bind to server")
-          throw new Exception("Cannot bind exception")
+        case f@Failure(ex) =>
+          logger.error("Sequence receiver cannot bind")
+          f
       }
   }
 
@@ -43,31 +43,14 @@ class SequenceReceiver(serverFactory: WsrServerFactory, storage: ActorRef)
   private def common(sender: WsrServerSender): Receive = {
     case Greeting =>
       storage ! HasFreeDataSpace
-      become(waitingForDataSpaceInfo(sender))
-  }
-
-  private def dataRequest(sender: WsrServerSender): Receive = {
     case Free(offset, size) =>
       sender.send(RequestForNumbers(offset, size))
-      become(waitingForNumbers(sender))
+    case Full =>
+      logger.info("No space, should wait")
+    case NextNumber(number) =>
+      storage ! StoreData(number)
+      metrics.reportNumberReceived()
   }
-
-  private def waitingForDataSpaceInfo(sender: WsrServerSender): Receive =
-    common(sender) orElse dataRequest(sender) orElse {
-      case Full =>
-        become(waitingForFreeDataSpace(sender))
-    }
-
-  private def waitingForNumbers(sender: WsrServerSender): Receive =
-    common(sender) orElse dataRequest(sender) orElse {
-      case NextNumber(number) =>
-        storage ! StoreData(number)
-        metrics.reportNumberReceived()
-    }
-
-  private def waitingForFreeDataSpace(sender: WsrServerSender): Receive =
-    common(sender) orElse dataRequest(sender)
-
 }
 
 object SequenceReceiver {

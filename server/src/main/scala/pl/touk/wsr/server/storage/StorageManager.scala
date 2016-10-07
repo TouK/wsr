@@ -43,7 +43,6 @@ class StorageManager(storage: Storage)
 
   private def handleRegisterFreeDataSpaceListener(listener: ActorRef): Unit = {
     freeDataSpaceListener = Some(listener)
-    storage.freeRequestedDataSpace
   }
 
   private def handleStoreNumber(number: Int): Unit = {
@@ -78,11 +77,18 @@ class StorageManager(storage: Storage)
       }
   }
 
-  private def handleHasFreeDataSpace(dataRequestSender: ActorRef): Future[Unit] = {
+  private def handleHasFreeDataSpace(freeSpaceReplayActor: ActorRef): Unit = for {
+    _ <- storage.freeRequestedDataSpace
+    _ <- requestForDataSpace(freeSpaceReplayActor)
+  } yield ()
+
+  private def requestForDataSpace(dataRequestSender: ActorRef): Future[Unit] = {
     (for {
       _ <- storage.requestForFreeDataSpace.map {
-        case NoFreeDataSpace => dataRequestSender ! Full
-        case FreeDataSpace(size, offset) => dataRequestSender ! Free(offset, size)
+        case NoFreeDataSpace =>
+          dataRequestSender ! Full
+        case FreeDataSpace(size, offset) =>
+          dataRequestSender ! Free(offset, size)
       }
     } yield {}) andThen { case Failure(ex) =>
       logger.error("Storage error", ex)
@@ -106,7 +112,7 @@ class StorageManager(storage: Storage)
         processingActor.foreach(context.unwatch)
         newDataProcessingActors
     }
-    freeDataSpaceListener.map(handleHasFreeDataSpace)
+    freeDataSpaceListener.map(requestForDataSpace)
   }
 
   private def handleTerminated(dataProcessingActor: ActorRef): Unit = {

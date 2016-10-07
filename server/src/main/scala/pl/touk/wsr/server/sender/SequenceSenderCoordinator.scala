@@ -36,9 +36,9 @@ class SequenceSenderCoordinator(serverFactory: WsrServerFactory, storage: ActorR
         case Success(sender) =>
           logger.debug("Sequence sender coordinator has been bound")
           become(bounded(sender))
-        case Failure(ex) =>
-          logger.error("Cannot bind to server")
-          throw new Exception("Cannot bind exception")
+        case f@Failure(ex) =>
+          logger.error("Sequence sender coordinator cannot bind")
+          f
       }
   }
 
@@ -83,8 +83,6 @@ class SequenceSenderCoordinator(serverFactory: WsrServerFactory, storage: ActorR
       case Some(seqId) =>
         sequenceSenders = sequenceSenders.removeByKey1(seqId)._1
       case None =>
-        logger.error("There is no Sequence sender in collection!")
-        metrics.reportError()
     }
   }
 

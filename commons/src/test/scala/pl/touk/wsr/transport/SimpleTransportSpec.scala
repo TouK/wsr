@@ -13,7 +13,7 @@ import pl.touk.wsr.transport.simple.{SimpleWsrClientFactory, SimpleWsrClientSend
 class SimpleTransportSpec extends TestKit(ActorSystem("SimpleTransportSpec")) with FlatSpecLike with Matchers {
 
   it should "forward message" in {
-    val client = prepareClient(null)
+    val client = prepareClient(new MockWsrClientHandler)
 
     client.send(Greeting)
 

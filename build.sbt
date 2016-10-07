@@ -89,7 +89,9 @@ lazy val server = project.in(file("server"))
     name := "wsr-server",
     assemblyJarName in assembly := "wsr-server.jar",
     libraryDependencies ++= {
+      val picklingV =              "0.10.1"
       Seq(
+        "org.scala-lang.modules"              %% "scala-pickling"               % picklingV,
         "com.typesafe.akka"                   %% "akka-testkit"                 % akkaV % "test",
         "org.scalatest"                       %% "scalatest"                    % scalaTestV % "test"
       )
