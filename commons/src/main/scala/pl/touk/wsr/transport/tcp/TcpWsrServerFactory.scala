@@ -88,6 +88,7 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: SingleMessageExt
           // lost connection only when there is no other open connection
           handler.onConnectionLost()
         }
+        router = Router(RoundRobinRoutingLogic(), context.children.map(ActorRefRoutee).toIndexedSeq)
         Stop
     }
   }
