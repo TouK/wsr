@@ -34,7 +34,7 @@ object ServerBoot extends App with LazyLogging {
   val mBeanName = new ObjectName("pl.touk.wsr.server:name=Server")
   mbs.registerMBean(metrics, mBeanName)
 
-  val storage = new InMemoryStorageWithSerialization(10, 10, "/tmp/wsr", serializable = true)
+  val storage = new InMemoryStorageWithSerialization(10, 2000, "/tmp/wsr", serializable = true)
   val storageManager = system.actorOf(StorageManager.props(storage), "storage-manager")
   val sequenceReceiver = system.actorOf(SequenceReceiver.props(writerSideFactory, storageManager), "sequence-receiver")
   val sequencesSenderCoordinator = system.actorOf(SequenceSenderCoordinator.props(readerSideFactory, storageManager), "sequence-sender-coordinator")
