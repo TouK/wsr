@@ -3,7 +3,7 @@ package pl.touk.wsr.transport.tcp
 import java.net.InetSocketAddress
 
 import akka.actor.SupervisorStrategy.Stop
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, OneForOneStrategy, Props, Stash, Status, SupervisorStrategy}
+import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, OneForOneStrategy, Props, Stash, Status, SupervisorStrategy, Terminated}
 import akka.io.Tcp.SO.KeepAlive
 import akka.io.Tcp._
 import akka.io.{IO, Inet, Tcp}
@@ -74,10 +74,13 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: SingleMessageExt
     case c: Connected =>
       val connection = sender()
       val handlerActor = context.actorOf(Props(new ConnectionHandlerActor(handler, initialExtractor, connection)))
+      context.watch(handlerActor)
       router = Router(RoundRobinRoutingLogic(), context.children.map(ActorRefRoutee).toIndexedSeq)
       connection ! Register(handlerActor)
     case msg: ServerMessage =>
       router.route(msg, sender())
+    case terminated: Terminated =>
+      router = Router(RoundRobinRoutingLogic(), context.children.map(ActorRefRoutee).toIndexedSeq)
   }
 
   override def supervisorStrategy: SupervisorStrategy = {
@@ -88,7 +91,6 @@ class BindingActor(handler: WsrServerHandler, initialExtractor: SingleMessageExt
           // lost connection only when there is no other open connection
           handler.onConnectionLost()
         }
-        router = Router(RoundRobinRoutingLogic(), context.children.map(ActorRefRoutee).toIndexedSeq)
         Stop
     }
   }
